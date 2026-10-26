@@ -26,11 +26,13 @@ fn deliver(webview: &WebView, event: &str, payload: serde_json::Value) -> Result
 fn start() -> Result<()> {
     let api = api::ApiClient::new().context("could not initialize Anixart API client")?;
     let mut state = AppState::new(api);
+    state.session = features::auth::session::load().ok().flatten();
     let event_loop = EventLoopBuilder::<AppEvent>::with_user_event().build();
     let proxy: EventLoopProxy<AppEvent> = event_loop.create_proxy();
     let window = WindowBuilder::new()
         .with_title("Anixart")
-        .with_inner_size(tao::dpi::LogicalSize::new(430.0, 860.0))
+        .with_min_inner_size(tao::dpi::LogicalSize::new(960.0, 640.0))
+        .with_maximized(true)
         .build(&event_loop)
         .context("could not create the application window")?;
 
@@ -60,8 +62,21 @@ fn start() -> Result<()> {
                 let _ = deliver(
                     &webview,
                     "ready",
-                    serde_json::json!({ "route": state.route() }),
+                    serde_json::json!({
+                        "route": state.route(),
+                        "session": state.session,
+                    }),
                 );
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result =
+                            features::profile::api::profile(&api, session.id, &session.token)
+                                .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::ProfileResolved(result));
+                    });
+                }
             }
             Event::UserEvent(AppEvent::Navigate(route)) => {
                 if state.navigate(route.clone()).is_ok() {
@@ -167,9 +182,184 @@ fn start() -> Result<()> {
                     let _ = proxy.send_event(AppEvent::SearchResolved(result));
                 });
             }
+            Event::UserEvent(AppEvent::SignIn { login, password }) => {
+                let api = state.api.clone();
+                let proxy = proxy.clone();
+                std::thread::spawn(move || {
+                    let request = features::auth::models::SignInRequest { login, password };
+                    let result = features::auth::api::sign_in(&api, &request)
+                        .and_then(|session| {
+                            features::auth::session::save(&session)
+                                .map_err(|error| {
+                                    crate::api::error::ApiError::InvalidResponse(error)
+                                })
+                                .map(|_| session)
+                        })
+                        .map_err(|error| error.to_string());
+                    let _ = proxy.send_event(AppEvent::AuthResolved(result));
+                });
+            }
+            Event::UserEvent(AppEvent::SignInGoogle) => {
+                let api = state.api.clone();
+                let proxy = proxy.clone();
+                std::thread::spawn(move || {
+                    let result = features::auth::google::sign_in(&api)
+                        .and_then(|session| {
+                            features::auth::session::save(&session)
+                                .map_err(|error| {
+                                    crate::api::error::ApiError::InvalidResponse(error)
+                                })
+                                .map(|_| session)
+                        })
+                        .map_err(|error| error.to_string());
+                    let _ = proxy.send_event(AppEvent::AuthResolved(result));
+                });
+            }
+            Event::UserEvent(AppEvent::SignOut) => {
+                state.session = None;
+                let result = features::auth::session::clear();
+                let _ = deliver(
+                    &webview,
+                    "signed_out",
+                    serde_json::json!({ "ok": result.is_ok(), "message": result.err() }),
+                );
+            }
+            Event::UserEvent(AppEvent::LoadBookmarks { kind, page }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result =
+                            features::account::api::bookmarks(&api, &session.token, &kind, page)
+                                .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::BookmarksResolved(result));
+                    });
+                } else {
+                    let _ = deliver(
+                        &webview,
+                        "account_error",
+                        serde_json::json!({"message": "Войдите в аккаунт для просмотра закладок."}),
+                    );
+                }
+            }
+            Event::UserEvent(AppEvent::LoadFeed { page, request_id }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result = features::account::api::feed(&api, &session.token, page)
+                            .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::FeedResolved { request_id, result });
+                    });
+                } else {
+                    let _ = deliver(
+                        &webview,
+                        "account_error",
+                        serde_json::json!({"message": "Войдите в аккаунт для просмотра ленты."}),
+                    );
+                }
+            }
+            Event::UserEvent(AppEvent::LoadCollections {
+                kind,
+                page,
+                request_id,
+            }) => {
+                let api = state.api.clone();
+                let proxy = proxy.clone();
+                let token = state.session.as_ref().map(|session| session.token.clone());
+                let profile_id = state.session.as_ref().map(|session| session.id);
+                std::thread::spawn(move || {
+                    let result = features::account::api::collections(
+                        &api,
+                        token.as_deref(),
+                        &kind,
+                        page,
+                        profile_id,
+                    )
+                    .map_err(|error| error.to_string());
+                    let _ = proxy.send_event(AppEvent::CollectionsResolved { request_id, result });
+                });
+            }
+            Event::UserEvent(AppEvent::OpenCollection {
+                collection_id,
+                request_id,
+            }) => {
+                let api = state.api.clone();
+                let proxy = proxy.clone();
+                let token = state.session.as_ref().map(|session| session.token.clone());
+                std::thread::spawn(move || {
+                    let result =
+                        features::account::api::collection(&api, token.as_deref(), collection_id)
+                            .map_err(|error| error.to_string());
+                    let _ = proxy.send_event(AppEvent::CollectionResolved { request_id, result });
+                });
+            }
+            Event::UserEvent(AppEvent::LoadFriends { page }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result =
+                            features::profile::api::friends(&api, session.id, page, &session.token)
+                                .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::FriendsResolved(result));
+                    });
+                } else {
+                    let _ = deliver(
+                        &webview,
+                        "friends_error",
+                        serde_json::json!({"message": "Войдите в аккаунт для просмотра друзей."}),
+                    );
+                }
+            }
+            Event::UserEvent(AppEvent::LoadReleaseComments { release_id, page }) => {
+                let api = state.api.clone();
+                let proxy = proxy.clone();
+                let token = state.session.as_ref().map(|session| session.token.clone());
+                std::thread::spawn(move || {
+                    let result = features::reviews::release_comments(
+                        &api,
+                        release_id,
+                        page,
+                        token.as_deref(),
+                    )
+                    .map(|page| serde_json::to_value(page).unwrap_or_default())
+                    .map_err(|error| error.to_string());
+                    let _ = proxy.send_event(AppEvent::ReleaseCommentsResolved(result));
+                });
+            }
+            Event::UserEvent(AppEvent::LoadArticle(article_id)) => {
+                let api = state.api.clone();
+                let proxy = proxy.clone();
+                let token = state.session.as_ref().map(|session| session.token.clone());
+                std::thread::spawn(move || {
+                    let result =
+                        features::account::api::article(&api, token.as_deref(), article_id)
+                            .map_err(|error| error.to_string());
+                    let _ = proxy.send_event(AppEvent::ArticleResolved(result));
+                });
+            }
+            Event::UserEvent(AppEvent::LoadHistory { page }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result = features::account::api::history(&api, &session.token, page)
+                            .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::HistoryResolved(result));
+                    });
+                } else {
+                    let _ = deliver(
+                        &webview,
+                        "account_error",
+                        serde_json::json!({"message": "Войдите в аккаунт для просмотра истории."}),
+                    );
+                }
+            }
             Event::UserEvent(AppEvent::LoadDiscoverPage { kind, page }) => {
                 let api = state.api.clone();
                 let proxy = proxy.clone();
+                let token = state.session.as_ref().map(|session| session.token.clone());
                 std::thread::spawn(move || {
                     let kind = match kind.as_str() {
                         "recommendations" => features::discover::api::DiscoverKind::Recommendations,
@@ -177,7 +367,7 @@ fn start() -> Result<()> {
                         "interesting" => features::discover::api::DiscoverKind::Interesting,
                         _ => features::discover::api::DiscoverKind::Discussing,
                     };
-                    let result = features::discover::api::page(&api, kind, page)
+                    let result = features::discover::api::page(&api, kind, page, token.as_deref())
                         .map_err(|error| error.to_string());
                     let _ = proxy.send_event(AppEvent::DiscoverPageResolved(result));
                 });
@@ -222,11 +412,172 @@ fn start() -> Result<()> {
                     serde_json::json!({ "message": error }),
                 );
             }
+            Event::UserEvent(AppEvent::AuthResolved(Ok(token))) => {
+                state.session = Some(token.clone());
+                let _ = deliver(
+                    &webview,
+                    "auth_success",
+                    serde_json::to_value(token).unwrap_or_else(|_| serde_json::json!({})),
+                );
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result =
+                            features::profile::api::profile(&api, session.id, &session.token)
+                                .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::ProfileResolved(result));
+                    });
+                }
+            }
+            Event::UserEvent(AppEvent::AuthResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "auth_error",
+                    serde_json::json!({ "message": error }),
+                );
+            }
+            Event::UserEvent(AppEvent::ProfileResolved(Ok(profile))) => {
+                let _ = deliver(
+                    &webview,
+                    "profile_data",
+                    serde_json::to_value(profile).unwrap_or_default(),
+                );
+            }
+            Event::UserEvent(AppEvent::ProfileResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "profile_error",
+                    serde_json::json!({ "message": error }),
+                );
+            }
+            Event::UserEvent(AppEvent::BookmarksResolved(Ok(page))) => {
+                let _ = deliver(
+                    &webview,
+                    "bookmarks_data",
+                    serde_json::to_value(page).unwrap_or_default(),
+                );
+            }
+            Event::UserEvent(AppEvent::BookmarksResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "bookmarks_error",
+                    serde_json::json!({ "message": error }),
+                );
+            }
+            Event::UserEvent(AppEvent::FeedResolved {
+                request_id,
+                result: Ok(page),
+            }) => {
+                let _ = deliver(
+                    &webview,
+                    "feed_data",
+                    serde_json::json!({"request_id": request_id, "data": page}),
+                );
+            }
+            Event::UserEvent(AppEvent::FeedResolved {
+                request_id,
+                result: Err(error),
+            }) => {
+                let _ = deliver(
+                    &webview,
+                    "feed_error",
+                    serde_json::json!({ "request_id": request_id, "message": error }),
+                );
+            }
+            Event::UserEvent(AppEvent::CollectionsResolved {
+                request_id,
+                result: Ok(page),
+            }) => {
+                let _ = deliver(
+                    &webview,
+                    "collections_data",
+                    serde_json::json!({"request_id": request_id, "data": page}),
+                );
+            }
+            Event::UserEvent(AppEvent::CollectionsResolved {
+                request_id,
+                result: Err(error),
+            }) => {
+                let _ = deliver(
+                    &webview,
+                    "collections_error",
+                    serde_json::json!({ "request_id": request_id, "message": error }),
+                );
+            }
+            Event::UserEvent(AppEvent::CollectionResolved {
+                request_id,
+                result: Ok(collection),
+            }) => {
+                let _ = deliver(
+                    &webview,
+                    "collection_data",
+                    serde_json::json!({"request_id": request_id, "data": collection}),
+                );
+            }
+            Event::UserEvent(AppEvent::CollectionResolved {
+                request_id,
+                result: Err(error),
+            }) => {
+                let _ = deliver(
+                    &webview,
+                    "collections_error",
+                    serde_json::json!({ "request_id": request_id, "message": error }),
+                );
+            }
+            Event::UserEvent(AppEvent::FriendsResolved(Ok(page))) => {
+                let _ = deliver(
+                    &webview,
+                    "friends_data",
+                    serde_json::to_value(page).unwrap_or_default(),
+                );
+            }
+            Event::UserEvent(AppEvent::FriendsResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "friends_error",
+                    serde_json::json!({"message": error}),
+                );
+            }
+            Event::UserEvent(AppEvent::ReleaseCommentsResolved(Ok(page))) => {
+                let _ = deliver(&webview, "release_comments_data", page);
+            }
+            Event::UserEvent(AppEvent::ReleaseCommentsResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "release_comments_error",
+                    serde_json::json!({"message": error}),
+                );
+            }
+            Event::UserEvent(AppEvent::ArticleResolved(Ok(article))) => {
+                let _ = deliver(&webview, "article_data", article);
+            }
+            Event::UserEvent(AppEvent::ArticleResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "article_error",
+                    serde_json::json!({"message": error}),
+                );
+            }
             Event::UserEvent(AppEvent::DiscoverPageResolved(Ok(page))) => {
                 let _ = deliver(
                     &webview,
                     "discover_page",
                     serde_json::to_value(page).unwrap_or_else(|_| serde_json::json!({})),
+                );
+            }
+            Event::UserEvent(AppEvent::HistoryResolved(Ok(page))) => {
+                let _ = deliver(
+                    &webview,
+                    "history_data",
+                    serde_json::to_value(page).unwrap_or_default(),
+                );
+            }
+            Event::UserEvent(AppEvent::HistoryResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "history_error",
+                    serde_json::json!({ "message": error }),
                 );
             }
             Event::UserEvent(AppEvent::DiscoverPageResolved(Err(error))) => {

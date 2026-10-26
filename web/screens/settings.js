@@ -1,42 +1,92 @@
 (() => {
-  const entries = [
-    ["◐", "Тёмная тема", "Включена", "appearance"],
-    ["♧", "Уведомления", "Настроить", "notifications"],
-    ["▷", "Воспроизведение", "Плеер и качество", "playback"],
-    ["◉", "Внешний вид", "Цвета и иконка", "appearance"],
-    ["☁", "Управление данными", "Импорт и экспорт", "data"],
-    ["◖", "Управление рекламой", "Настройки источников APK", "ads"],
-    ["•••", "Дополнительно", "Другие параметры", "additional"],
-    ["?", "Помощь", "Справка и поддержка", "help"],
-    ["◇", "Правила сообщества", "", "rules"],
-    ["↻", "Проверить обновления", "", "updates"],
-  ];
   function renderSettings() {
     const root = document.getElementById("screen-content");
     root.innerHTML = `
-      <section class="screen settings-screen" aria-labelledby="screen-title">
-        <h1 id="screen-title">Настройки</h1><p class="settings-owner">Гость · настройки приложения</p>
-        <div class="settings-list">${entries.map(([icon, title, desc, id]) => `<button class="settings-row" type="button" data-setting="${id}"><span class="settings-row-icon">${icon}</span><span class="settings-row-copy"><strong>${title}</strong>${desc ? `<small>${desc}</small>` : ""}</span><span class="settings-chevron">›</span></button>`).join("")}</div>
-        <div class="settings-footer">Интерфейс Anixart · перенос по APK</div>
-      </section>`;
-    root.querySelectorAll("[data-setting]").forEach(button => button.addEventListener("click", () => {
-      const key = button.dataset.setting;
-      if (key === "notifications") return window.app.navigate("notifications");
-      if (key === "ads") return window.app.setStatus("Управление рекламой", "В APK есть раздельные настройки Kodik и веб-плеера. Переносим их после проверки поведения источников.");
-      if (key === "playback" || key === "appearance" || key === "data" || key === "additional") return renderSettingDetail(key);
-      window.app.setStatus(button.querySelector("strong").textContent, "Этот экран перенесём из APK отдельным срезом.");
-    }));
+      <div class="screen-header">
+        <h1>Настройки</h1>
+        <p>Настройки приложения и аккаунта</p>
+      </div>
+
+      <div class="profile-section">
+        <h2>Внешний вид</h2>
+        <div class="settings-row">
+          <div>
+            <strong>Тема оформления</strong>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+              Переключение между светлой и темной темой
+            </p>
+          </div>
+          <button class="btn btn-secondary" id="settings-theme-toggle">
+            Изменить тему
+          </button>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h2>Аккаунт</h2>
+        <div class="settings-row">
+          <div>
+            <strong>Профиль</strong>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+              Управление данными профиля
+            </p>
+          </div>
+          <button class="btn btn-secondary" onclick="window.app.navigate('profile')">
+            Перейти
+          </button>
+        </div>
+        <div class="settings-row" style="margin-top: 16px;">
+          <div>
+            <strong>Выйти из аккаунта</strong>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+              Завершить текущую сессию
+            </p>
+          </div>
+          <button class="btn btn-secondary" id="settings-signout" style="color: var(--accent);">
+            Выйти
+          </button>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h2>Воспроизведение</h2>
+        <div class="settings-row">
+          <div>
+            <strong>Автовоспроизведение</strong>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+              Автоматически запускать следующий эпизод
+            </p>
+          </div>
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" checked style="width: 20px; height: 20px;">
+            <span style="font-size: 14px;">Включено</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h2>О приложении</h2>
+        <div class="settings-row">
+          <div>
+            <strong>Версия</strong>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+              Anixart Desktop v0.1.0
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const themeToggle = root.querySelector("#settings-theme-toggle");
+    if (themeToggle) {
+      themeToggle.addEventListener("click", () => {
+        window.app.toggleTheme();
+      });
+    }
+    root.querySelector("#settings-signout")?.addEventListener("click", () => {
+      window.appIpc.send({ action: "sign_out" });
+    });
   }
-  function renderSettingDetail(key) {
-    const titles = { playback: "Воспроизведение", appearance: "Внешний вид", data: "Управление данными", additional: "Дополнительно" };
-    const root = document.getElementById("screen-content");
-    root.innerHTML = `<section class="screen settings-screen"><button class="settings-back" type="button">← Настройки</button><h1>${titles[key]}</h1><div class="settings-detail-list">${(key === "playback" ? ["Плеер по умолчанию", "Качество видео", "Перемотка назад", "Перемотка вперёд", "Автоматический переход к следующей серии", "Субтитры"] : key === "appearance" ? ["Тёмная тема", "Цветовая схема", "Язык интерфейса", "Иконка приложения"] : key === "data" ? ["Экспорт закладок", "Импорт закладок", "Очистить кэш"] : ["Очистить историю", "Открыть папку загрузок", "О приложении"]).map(label => `<label class="settings-toggle-row"><span>${label}</span><input type="checkbox" ${/тема|автоматический/i.test(label) ? "checked" : ""}><i></i></label>`).join("")}</div><p class="settings-note">Настройки пока отображаются как интерфейс APK. Сохранение будет подключено к Windows-настройкам отдельно.</p></section>`;
-    root.querySelector(".settings-back").addEventListener("click", renderSettings);
-  }
-  function renderNotifications() {
-    const root = document.getElementById("screen-content");
-    root.innerHTML = `<section class="screen notifications-screen"><button class="settings-back" type="button">← Назад</button><h1>Уведомления</h1><div class="notification-empty"><span>♧</span><strong>Пока нет уведомлений</strong><p>Здесь будут уведомления Anixart</p></div></section>`;
-    root.querySelector(".settings-back").addEventListener("click", () => window.app.navigate("home"));
-  }
-  window.appScreens = { ...(window.appScreens || {}), settings: renderSettings, notifications: renderNotifications };
+
+  window.appScreens = { ...(window.appScreens || {}), settings: renderSettings };
 })();

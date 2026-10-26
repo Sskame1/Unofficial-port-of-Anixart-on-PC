@@ -31,6 +31,42 @@ pub enum AppCommand {
     SearchReleases {
         query: String,
     },
+    SignIn {
+        login: String,
+        password: String,
+    },
+    SignInGoogle,
+    SignOut,
+    LoadBookmarks {
+        kind: String,
+        page: u32,
+    },
+    LoadHistory {
+        page: u32,
+    },
+    LoadFeed {
+        page: u32,
+        request_id: u64,
+    },
+    LoadCollections {
+        kind: String,
+        page: u32,
+        request_id: u64,
+    },
+    OpenCollection {
+        collection_id: u64,
+        request_id: u64,
+    },
+    LoadFriends {
+        page: u32,
+    },
+    LoadReleaseComments {
+        release_id: u64,
+        page: u32,
+    },
+    LoadArticle {
+        article_id: u64,
+    },
     LoadDiscoverPage {
         kind: String,
         page: u32,
@@ -70,7 +106,60 @@ pub enum AppEvent {
     },
     EpisodesResolved(Result<Vec<crate::features::episodes::EpisodeItem>, String>),
     SearchReleases(String),
+    SignIn {
+        login: String,
+        password: String,
+    },
+    SignInGoogle,
+    SignOut,
     SearchResolved(Result<Vec<crate::features::discover::models::ReleaseCard>, String>),
+    AuthResolved(Result<crate::features::auth::session::AuthSession, String>),
+    ProfileResolved(Result<crate::features::profile::models::Profile, String>),
+    LoadBookmarks {
+        kind: String,
+        page: u32,
+    },
+    BookmarksResolved(Result<crate::features::account::models::BookmarkPage, String>),
+    LoadHistory {
+        page: u32,
+    },
+    HistoryResolved(Result<crate::features::account::models::BookmarkPage, String>),
+    LoadFeed {
+        page: u32,
+        request_id: u64,
+    },
+    FeedResolved {
+        request_id: u64,
+        result: Result<crate::features::account::models::FeedPage, String>,
+    },
+    LoadCollections {
+        kind: String,
+        page: u32,
+        request_id: u64,
+    },
+    CollectionsResolved {
+        request_id: u64,
+        result: Result<crate::features::account::models::CollectionPage, String>,
+    },
+    OpenCollection {
+        collection_id: u64,
+        request_id: u64,
+    },
+    CollectionResolved {
+        request_id: u64,
+        result: Result<crate::features::account::models::CollectionDetails, String>,
+    },
+    LoadFriends {
+        page: u32,
+    },
+    FriendsResolved(Result<crate::features::profile::models::FriendsPage, String>),
+    LoadReleaseComments {
+        release_id: u64,
+        page: u32,
+    },
+    ReleaseCommentsResolved(Result<serde_json::Value, String>),
+    LoadArticle(u64),
+    ArticleResolved(Result<serde_json::Value, String>),
     LoadDiscoverPage {
         kind: String,
         page: u32,
@@ -165,6 +254,78 @@ impl AppCommand {
                 }
                 Ok(AppEvent::SearchReleases(query))
             }
+            Self::SignIn { login, password } => {
+                let login = login.trim().to_owned();
+                if login.is_empty() || password.is_empty() {
+                    return Err("Введите логин и пароль.".to_owned());
+                }
+                Ok(AppEvent::SignIn { login, password })
+            }
+            Self::SignInGoogle => Ok(AppEvent::SignInGoogle),
+            Self::SignOut => Ok(AppEvent::SignOut),
+            Self::LoadBookmarks { kind, page }
+                if page > 0
+                    && matches!(
+                        kind.as_str(),
+                        "favorites"
+                            | "watching"
+                            | "planned"
+                            | "completed"
+                            | "postponed"
+                            | "dropped"
+                    ) =>
+            {
+                Ok(AppEvent::LoadBookmarks { kind, page })
+            }
+            Self::LoadBookmarks { .. } => {
+                Err("Категория закладок или страница указана неверно.".to_owned())
+            }
+            Self::LoadHistory { page } if page > 0 => Ok(AppEvent::LoadHistory { page }),
+            Self::LoadHistory { .. } => {
+                Err("Номер страницы истории должен быть больше нуля.".to_owned())
+            }
+            Self::LoadFeed { page, request_id } if page > 0 => {
+                Ok(AppEvent::LoadFeed { page, request_id })
+            }
+            Self::LoadFeed { .. } => {
+                Err("Номер страницы ленты должен быть больше нуля.".to_owned())
+            }
+            Self::LoadCollections {
+                kind,
+                page,
+                request_id,
+            } if page > 0 && matches!(kind.as_str(), "popular" | "new" | "mine") => {
+                Ok(AppEvent::LoadCollections {
+                    kind,
+                    page,
+                    request_id,
+                })
+            }
+            Self::LoadCollections { .. } => {
+                Err("Раздел коллекций или страница указаны неверно.".to_owned())
+            }
+            Self::OpenCollection {
+                collection_id,
+                request_id,
+            } if collection_id > 0 => Ok(AppEvent::OpenCollection {
+                collection_id,
+                request_id,
+            }),
+            Self::OpenCollection { .. } => Err("ID коллекции должен быть больше нуля.".to_owned()),
+            Self::LoadFriends { page } if page > 0 => Ok(AppEvent::LoadFriends { page }),
+            Self::LoadFriends { .. } => {
+                Err("Номер страницы друзей должен быть больше нуля.".to_owned())
+            }
+            Self::LoadReleaseComments { release_id, page } if release_id > 0 && page > 0 => {
+                Ok(AppEvent::LoadReleaseComments { release_id, page })
+            }
+            Self::LoadReleaseComments { .. } => {
+                Err("ID релиза или страница отзывов указаны неверно.".to_owned())
+            }
+            Self::LoadArticle { article_id } if article_id > 0 => {
+                Ok(AppEvent::LoadArticle(article_id))
+            }
+            Self::LoadArticle { .. } => Err("ID публикации должен быть больше нуля.".to_owned()),
             Self::LoadDiscoverPage { kind, page }
                 if page > 0
                     && matches!(

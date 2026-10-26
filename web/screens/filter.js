@@ -10,18 +10,18 @@
           <button class="settings-back" type="button">← Обзор</button>
           <h1>Фильтр релизов</h1>
         </header>
-        
+
         <div class="filter-fields">
           <label class="filter-field">
             <span><small>Год от</small></span>
             <input id="filter-start" type="number" min="1900" max="2100" placeholder="Любой">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Год до</small></span>
             <input id="filter-end" type="number" min="1900" max="2100" placeholder="Любой">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Категория</small></span>
             <select id="filter-category">
@@ -30,7 +30,7 @@
               <option value="2">Дорама</option>
             </select>
           </label>
-          
+
           <label class="filter-field">
             <span><small>Статус</small></span>
             <select id="filter-status">
@@ -40,32 +40,32 @@
               <option value="3">Анонсирован</option>
             </select>
           </label>
-          
+
           <label class="filter-field">
             <span><small>Студия</small></span>
             <input id="filter-studio" type="text" placeholder="Любая">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Источник</small></span>
             <input id="filter-source" type="text" placeholder="Любой">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Эпизодов от</small></span>
             <input id="filter-episodes-from" type="number" min="0" placeholder="Любое">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Эпизодов до</small></span>
             <input id="filter-episodes-to" type="number" min="0" placeholder="Любое">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Страна</small></span>
             <input id="filter-country" type="text" placeholder="Любая">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Сезон</small></span>
             <select id="filter-season">
@@ -76,22 +76,22 @@
               <option value="4">Осень</option>
             </select>
           </label>
-          
+
           <label class="filter-field">
             <span><small>Длительность эп. от (мин)</small></span>
             <input id="filter-duration-from" type="number" min="0" placeholder="Любая">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Длительность эп. до (мин)</small></span>
             <input id="filter-duration-to" type="number" min="0" placeholder="Любая">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Жанры (через запятую)</small></span>
             <input id="filter-genres" type="text" placeholder="Например: боевик, комедия">
           </label>
-          
+
           <label class="filter-field">
             <span><small>Возрастной рейтинг</small></span>
             <select id="filter-age-rating" multiple size="3">
@@ -103,7 +103,7 @@
               <option value="6">Rx - Хентай</option>
             </select>
           </label>
-          
+
           <label class="filter-field">
             <span><small>Сортировка</small></span>
             <select id="filter-sort">
@@ -118,14 +118,14 @@
             </select>
           </label>
         </div>
-        
+
         <div class="filter-actions">
           <button id="filter-reset" type="button">Сбросить</button>
           <button id="filter-apply" type="button">Применить фильтр</button>
         </div>
-        
+
         <div id="filter-results" class="release-grid" aria-live="polite"></div>
-        
+
         <div class="filter-pagination" id="filter-pagination" style="display: none;">
           <button id="filter-prev" type="button">← Назад</button>
           <span id="filter-page-info"></span>
@@ -180,7 +180,7 @@
   function submitFilter() {
     const start = Number(document.getElementById("filter-start").value) || null;
     const end = Number(document.getElementById("filter-end").value) || null;
-    
+
     if (start && end && start > end) {
       window.app.setStatus("Фильтр", "Год «от» не может быть больше года «до».");
       return;
@@ -229,7 +229,7 @@
 
     const results = document.getElementById("filter-results");
     results.innerHTML = '<p class="placeholder">Применяем фильтр…</p>';
-    
+
     window.appIpc.send({
       action: "apply_filter",
       page: currentPage,
@@ -251,11 +251,11 @@
 
     const pagination = document.getElementById("filter-pagination");
     const pageInfo = document.getElementById("filter-page-info");
-    
+
     if (response.total_page_count > 1) {
       pagination.style.display = "flex";
       pageInfo.textContent = `Страница ${response.current_page} из ${response.total_page_count}`;
-      
+
       document.getElementById("filter-prev").disabled = response.current_page <= 1;
       document.getElementById("filter-next").disabled = response.current_page >= response.total_page_count;
     } else {

@@ -1,88 +1,102 @@
 (() => {
+  const tabs = [
+    { key: "anime", label: "Аниме" },
+    { key: "donghua", label: "Дунхуа" },
+    { key: "latest", label: "Последнее" },
+    { key: "ongoing", label: "Онгоинги" },
+    { key: "announced", label: "Анонсы" },
+    { key: "completed", label: "Завершенные" },
+    { key: "movies", label: "Фильмы" },
+    { key: "ova", label: "OVA" }
+  ];
+
+  let currentTab = "anime";
+  let page = 1;
+
+  const tabFilters = {
+    anime: { category_id: 1 },
+    donghua: { category_id: 2 },
+    latest: { sort: 0 },
+    ongoing: { status_id: 2 },
+    announced: { status_id: 3 },
+    completed: { status_id: 1 },
+    movies: { types: [2] },
+    ova: { types: [3] }
+  };
+
   function renderHome() {
-    const main = document.getElementById("screen-content");
-    main.innerHTML = `
-      <section class="screen home-screen" aria-labelledby="screen-title">
-        <nav class="home-tabs" aria-label="Каталог">
-          <button type="button" class="home-tab" data-route="bookmarks">Моя вкладка</button>
-          <button type="button" class="home-tab is-active">Аниме</button>
-          <button type="button" class="home-tab">Дунхуа</button>
-          <button type="button" class="home-tab">Последнее</button>
-          <button type="button" class="home-tab" data-route="discover">Популярное</button>
-        </nav>
-        <h1 class="visually-hidden" id="screen-title">Главная</h1>
-        <section class="home-feature" aria-label="Популярные релизы" tabindex="0">
-          <div class="feature-placeholder"><span class="loading-orbit"></span></div>
-          <div class="feature-caption"><strong>Случайное аниме</strong><span>Нажмите, чтобы открыть карточку</span></div>
-          <button class="feature-arrow" id="home-random" type="button" aria-label="Открыть случайный релиз">›</button>
-        </section>
-        <div class="home-shortcuts">
-          <button class="shortcut" data-route="discover"><span class="shortcut-icon">♨</span><span>Популярное</span></button>
-          <button class="shortcut" data-route="schedule"><span class="shortcut-icon">▤</span><span>Расписание</span></button>
-          <button class="shortcut" data-route="collections"><span class="shortcut-icon">▣</span><span>Коллекции</span><i></i></button>
-          <button class="shortcut" data-route="filter"><span class="shortcut-icon">☷</span><span>Фильтр</span></button>
-          <button class="shortcut" id="home-random-shortcut"><span class="shortcut-icon">⤨</span><span>Рандом</span></button>
+    const root = document.getElementById("screen-content");
+    root.innerHTML = `
+      <div class="screen-header home-header">
+        <div>
+          <h1>Главная</h1>
+          <p>Каталог аниме и дорам</p>
         </div>
-        <section class="home-section">
-          <div class="section-heading"><div><h2>Из каталога</h2><p>Публичный релиз Anixart</p></div><button type="button" data-route="discover">Обзор</button></div>
-          <div class="home-release-grid" id="home-release-grid"><div class="poster-skeleton"></div><div class="poster-skeleton"></div><div class="poster-skeleton"></div></div>
-          <div class="home-empty-note" id="home-note">Загрузите случайный релиз, чтобы посмотреть доступную карточку.</div>
-        </section>
-      </section>`;
-    main.querySelectorAll('[data-route]').forEach(button => button.addEventListener('click', () => window.app.navigate(button.dataset.route)));
-    main.querySelectorAll('.home-tab:not([data-route])').forEach(button => button.addEventListener('click', () => {
-      main.querySelectorAll('.home-tab').forEach(tab => tab.classList.remove('is-active'));
-      button.classList.add('is-active');
-      window.app.setStatus("Каталог", `Вкладка «${button.textContent.trim()}» ещё подключается к API.`);
-    }));
-    document.getElementById("home-random")?.addEventListener("click", event => { event.stopPropagation(); loadRandom(); });
-    document.getElementById("home-random-shortcut")?.addEventListener("click", loadRandom);
-    loadRandom();
+        <button class="header-search-button" id="home-search" type="button" aria-label="Поиск аниме" title="Поиск аниме">
+          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4.5 4.5"></path></svg>
+          <span>Поиск</span>
+        </button>
+      </div>
+
+      <div class="content-tabs">
+        ${tabs.map(tab => `
+          <button class="tab-item ${tab.key === currentTab ? "active" : ""}" data-tab="${tab.key}">
+            ${tab.label}
+          </button>
+        `).join("")}
+      </div>
+
+      <div id="home-results" class="release-grid">
+        <div class="placeholder">
+          <div class="placeholder-icon">📺</div>
+          <p>Загружаем релизы...</p>
+        </div>
+      </div>
+    `;
+
+    root.querySelectorAll(".tab-item").forEach(button => {
+      button.addEventListener("click", () => {
+        currentTab = button.dataset.tab;
+        page = 1;
+        renderHome();
+      });
+    });
+
+    root.querySelector("#home-search")?.addEventListener("click", () => window.app.navigate("search"));
+
+    loadContent();
   }
 
-  function loadRandom() {
-    const note = document.getElementById("home-note");
-    if (note) note.textContent = "Загружаем релиз из публичного каталога…";
-    window.appIpc.send({ action: "discover_random_release" });
-  }
-
-  function showRandomRelease(release) {
-    const grid = document.getElementById("home-release-grid");
-    if (!grid) return;
-    const card = window.releaseCard.render(release, true);
-    grid.replaceChildren(card);
-    const feature = document.querySelector(".home-feature");
-    if (feature && typeof release.image === "string" && release.image.startsWith("https://")) {
-      feature.dataset.releaseId = release.id;
-      feature.classList.add("has-release");
-      feature.setAttribute("role", "button");
-      feature.setAttribute("aria-label", `Открыть релиз: ${release.title_ru || release.title_original || "Аниме"}`);
-      const image = document.createElement("img");
-      image.className = "feature-poster";
-      image.alt = "";
-      image.src = release.image;
-      image.referrerPolicy = "no-referrer";
-      image.addEventListener("error", () => { image.remove(); feature.classList.remove("has-release"); }, { once: true });
-      feature.prepend(image);
+  function loadContent() {
+    const results = document.getElementById("home-results");
+    if (results) {
+      results.innerHTML = '<div class="placeholder"><div class="placeholder-icon">⏳</div><p>Загружаем релизы...</p></div>';
     }
-    const title = document.querySelector(".feature-caption strong");
-    const subtitle = document.querySelector(".feature-caption span");
-    if (title) title.textContent = release.title_ru || release.title_original || "Аниме";
-    if (subtitle) subtitle.textContent = [release.year, release.grade ? `★ ${release.grade.toFixed(1)}` : ""].filter(Boolean).join(" · ");
-    const note = document.getElementById("home-note");
-    if (note) note.textContent = "Откройте карточку, чтобы увидеть подробности и доступные эпизоды.";
+    window.appIpc.send({
+      action: "apply_filter",
+      page,
+      filter: {
+        ...(tabFilters[currentTab] || {}),
+        sort: tabFilters[currentTab]?.sort ?? 0,
+        genres: [],
+        types: tabFilters[currentTab]?.types || [],
+        age_ratings: [],
+        profile_list_exclusions: [],
+        is_genres_exclude_mode_enabled: false
+      }
+    });
   }
 
-  function showRandomError(message) {
-    const grid = document.getElementById("home-release-grid");
-    if (!grid) return;
-    const error = document.createElement("div");
-    error.className = "home-data-error";
-    error.textContent = `Не удалось загрузить каталог: ${message}`;
-    grid.replaceChildren(error);
-    const note = document.getElementById("home-note");
-    if (note) note.textContent = "Проверьте подключение и нажмите «Рандом», чтобы повторить запрос.";
+  function showResults(response) {
+    const results = document.getElementById("home-results");
+    if (!results) return;
+    const content = response.content || [];
+    if (!content.length) {
+      results.innerHTML = '<div class="placeholder"><div class="placeholder-icon">📭</div><p>В этом разделе пока нет релизов</p></div>';
+      return;
+    }
+    results.replaceChildren(...content.map(release => window.releaseCard.render(release)));
   }
 
-  window.appScreens = { ...(window.appScreens || {}), home: renderHome, showHomeRelease: showRandomRelease, showHomeError: showRandomError };
+  window.appScreens = { ...(window.appScreens || {}), home: renderHome, showHomeResults: showResults };
 })();

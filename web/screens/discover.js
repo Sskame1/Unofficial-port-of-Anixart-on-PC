@@ -1,117 +1,147 @@
 (() => {
   const tabs = [
-    ["recommendations", "Рекомендации"],
-    ["interesting", "Интересное"],
-    ["discussing", "Обсуждают"],
-    ["watching", "Смотрят"]
+    { key: "recommendations", label: "Рекомендации" },
+    { key: "interesting", label: "Интересное" },
+    { key: "discussing", label: "Обсуждают" },
+    { key: "watching", label: "Смотрят" }
   ];
-  let kind = "recommendations";
+
+  let currentTab = "recommendations";
   let page = 1;
   let totalPages = 1;
 
   function renderDiscover() {
     const root = document.getElementById("screen-content");
     root.innerHTML = `
-      <section class="screen">
-        <h1 class="screen-title">Обзор</h1>
-        <p class="screen-subtitle">Подборки каталога Anixart</p>
-        <nav class="collection-tabs">
-          ${tabs.map(([key, label]) => 
-            `<button type="button" data-kind="${key}" class="${key === kind ? "is-active" : ""}">${label}</button>`
-          ).join("")}
-          <button type="button" data-route="filter">Фильтр</button>
-        </nav>
-        <div id="discover-result" class="release-grid" aria-live="polite">
-          <p class="placeholder">Загружаем каталог…</p>
-        </div>
-        <div class="filter-actions">
-          <button id="discover-prev" type="button" disabled>← Назад</button>
-          <span class="page-info">Страница <span id="current-page">1</span> из <span id="total-pages">1</span></span>
-          <button id="discover-next" type="button">Ещё →</button>
-        </div>
-      </section>`;
+      <div class="screen-header">
+        <h1>Обзор</h1>
+        <p>Популярное и рекомендованное</p>
+      </div>
 
-    root.querySelectorAll("[data-kind]").forEach(button =>
+      <div class="content-tabs">
+        ${tabs.map(tab => `
+          <button class="tab-item ${tab.key === currentTab ? "active" : ""}" data-tab="${tab.key}">
+            ${tab.label}
+          </button>
+        `).join("")}
+      </div>
+
+      <div id="discover-results" class="release-grid">
+        <div class="placeholder">
+          <div class="placeholder-icon">🔍</div>
+          <p>Загружаем каталог...</p>
+        </div>
+      </div>
+
+      <div id="discover-pagination" style="display: none; margin-top: 32px; justify-content: center; gap: 16px;">
+        <button class="btn btn-secondary" id="discover-prev">← Назад</button>
+        <span style="display: flex; align-items: center; color: var(--text-secondary);">
+          Страница <strong style="margin: 0 6px;">${page}</strong> из <strong style="margin: 0 6px;">${totalPages}</strong>
+        </span>
+        <button class="btn btn-secondary" id="discover-next">Далее →</button>
+      </div>
+    `;
+
+    root.querySelectorAll(".tab-item").forEach(button => {
       button.addEventListener("click", () => {
-        kind = button.dataset.kind;
+        currentTab = button.dataset.tab;
         page = 1;
         renderDiscover();
-      })
-    );
-
-    root.querySelector("[data-route]").addEventListener("click", () =>
-      window.app.navigate("filter")
-    );
+      });
+    });
 
     const prevBtn = root.querySelector("#discover-prev");
     const nextBtn = root.querySelector("#discover-next");
 
-    prevBtn.addEventListener("click", () => {
-      if (page > 1) {
-        page--;
-        updateButtons();
-        load();
-      }
-    });
+    if (prevBtn) {
+      prevBtn.addEventListener("click", () => {
+        if (page > 1) {
+          page--;
+          loadContent();
+        }
+      });
+    }
 
-    nextBtn.addEventListener("click", () => {
-      if (page < totalPages) {
-        page++;
-        updateButtons();
-        load();
-      }
-    });
+    if (nextBtn) {
+      nextBtn.addEventListener("click", () => {
+        if (page < totalPages) {
+          page++;
+          loadContent();
+        }
+      });
+    }
 
-    load();
+    loadContent();
   }
 
-  function updateButtons() {
-    const prevBtn = document.getElementById("discover-prev");
-    const nextBtn = document.getElementById("discover-next");
-    const currentPageEl = document.getElementById("current-page");
-    const totalPagesEl = document.getElementById("total-pages");
-
-    if (prevBtn) prevBtn.disabled = page <= 1;
-    if (nextBtn) nextBtn.disabled = page >= totalPages;
-    if (currentPageEl) currentPageEl.textContent = page;
-    if (totalPagesEl) totalPagesEl.textContent = totalPages;
-  }
-
-  function load() {
-    const result = document.getElementById("discover-result");
-    if (result) result.innerHTML = '<p class="placeholder">Загружаем страницу каталога…</p>';
-    window.appIpc.send({ action: "load_discover_page", kind, page });
+  function loadContent() {
+    window.appIpc.send({ action: "load_discover_page", kind: currentTab, page });
   }
 
   function showPage(response) {
-    const root = document.getElementById("discover-result");
-    if (!root) return;
+    const results = document.getElementById("discover-results");
+    if (!results) return;
 
     if (response.total_page_count) {
       totalPages = response.total_page_count;
     }
 
-    updateButtons();
-
     if (!response.content?.length) {
-      root.innerHTML = '<p class="placeholder">В этом разделе пока нет релизов.</p>';
+      results.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">📭</div>
+          <p>В этом разделе пока нет релизов</p>
+        </div>
+      `;
       return;
     }
 
-    root.replaceChildren(...response.content.map(release => window.releaseCard.render(release)));
+    if (currentTab === "interesting") {
+      results.classList.remove("release-grid");
+      results.classList.add("interesting-grid");
+      results.replaceChildren(...response.content.map(item => renderInteresting(item)));
+    } else {
+      results.classList.remove("interesting-grid");
+      results.classList.add("release-grid");
+      results.replaceChildren(...response.content.map(release => window.releaseCard.render(release)));
+    }
+
+    const pagination = document.getElementById("discover-pagination");
+    if (pagination && totalPages > 1) {
+      pagination.style.display = "flex";
+      const prevBtn = document.getElementById("discover-prev");
+      const nextBtn = document.getElementById("discover-next");
+      if (prevBtn) prevBtn.disabled = page <= 1;
+      if (nextBtn) nextBtn.disabled = page >= totalPages;
+    }
+  }
+
+  function renderInteresting(item) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "interesting-card";
+    const title = item.title || item.title_ru || item.title_original || "Подборка Anixart";
+    const image = item.image || "";
+    card.innerHTML = `<div class="interesting-card-image">${image ? `<img src="${image}" alt="" loading="lazy">` : `<span>✦</span>`}</div><div class="interesting-card-copy"><strong>${title}</strong><p>${item.description || ""}</p></div>`;
+    card.addEventListener("click", () => {
+      const id = Number(item.action || item.id);
+      if (id > 0) window.appIpc.send({ action: "open_release", release_id: id });
+    });
+    return card;
   }
 
   function showError(message) {
-    const root = document.getElementById("discover-result");
-    if (root) {
-      root.innerHTML = `
-        <div class="error-state">
+    const results = document.getElementById("discover-results");
+    if (results) {
+      results.classList.remove("interesting-grid");
+      results.classList.add("release-grid");
+      results.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">⚠️</div>
           <p>Не удалось загрузить каталог</p>
-          <p class="error-message">${message}</p>
-          <button type="button" id="retry-discover">Повторить</button>
-        </div>`;
-      
-      root.querySelector("#retry-discover")?.addEventListener("click", load);
+          <p style="font-size: 13px; margin-top: 8px;">${message}</p>
+        </div>
+      `;
     }
   }
 

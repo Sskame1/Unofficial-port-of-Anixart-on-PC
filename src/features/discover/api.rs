@@ -1,6 +1,6 @@
 use crate::{
     api::{client::ApiClient, error::ApiError},
-    features::discover::models::ReleaseCard,
+    features::discover::models::{InterestingItem, ReleaseCard},
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,24 +30,82 @@ pub fn page(
     client: &ApiClient,
     kind: DiscoverKind,
     page: u32,
+    token: Option<&str>,
 ) -> Result<PageableResponse<ReleaseCard>, ApiError> {
-    let page = page.max(1);
+    if matches!(kind, DiscoverKind::Interesting) {
+        let response = interesting(client)?;
+        return Ok(PageableResponse {
+            code: response.code,
+            content: response
+                .content
+                .into_iter()
+                .map(|item| ReleaseCard {
+                    id: item.id,
+                    action: Some(item.action),
+                    title_ru: Some(item.title),
+                    title_original: None,
+                    image: Some(item.image),
+                    year: None,
+                    description: Some(item.description),
+                    grade: None,
+                    genres: None,
+                    episodes_released: None,
+                    episodes_total: None,
+                    category: None,
+                    status: None,
+                    age_rating: None,
+                    source: None,
+                    country: None,
+                    studio: None,
+                    duration: None,
+                    season: None,
+                    rating: None,
+                    is_play_disabled: None,
+                    is_view_blocked: None,
+                    vote_count: None,
+                    favorites_count: None,
+                    screenshot_images: Vec::new(),
+                    related_releases: Vec::new(),
+                    recommended_releases: Vec::new(),
+                })
+                .collect(),
+            current_page: response.current_page,
+            total_count: response.total_count,
+            total_page_count: response.total_page_count,
+        });
+    }
+    let page = page.saturating_sub(1);
     let path = match kind {
         DiscoverKind::Recommendations => format!("discover/recommendations/{page}"),
         DiscoverKind::Discussing => "discover/discussing".to_owned(),
         DiscoverKind::Watching => format!("discover/watching/{page}"),
-        DiscoverKind::Interesting => "discover/interesting".to_owned(),
+        DiscoverKind::Interesting => unreachable!(),
     };
     let mut url = client.url(&path)?;
-    url.query_pairs_mut().append_pair("token", "");
+    url.query_pairs_mut()
+        .append_pair("token", token.unwrap_or(""));
     if matches!(kind, DiscoverKind::Recommendations) {
+        let previous_page = if page > 0 { -1 } else { -1 };
         url.query_pairs_mut()
-            .append_pair("previous_page", &(page.saturating_sub(1)).to_string());
+            .append_pair("previous_page", &previous_page.to_string());
     }
     let response: PageableResponse<ReleaseCard> = client.post_empty_json(url)?;
     if response.code != 0 {
         return Err(ApiError::InvalidResponse(format!(
             "Anixart rejected discover request (code {}).",
+            response.code
+        )));
+    }
+    Ok(response)
+}
+
+pub fn interesting(client: &ApiClient) -> Result<PageableResponse<InterestingItem>, ApiError> {
+    let mut url = client.url("discover/interesting")?;
+    url.query_pairs_mut().append_pair("token", "");
+    let response: PageableResponse<InterestingItem> = client.post_empty_json(url)?;
+    if response.code != 0 {
+        return Err(ApiError::InvalidResponse(format!(
+            "Anixart rejected interesting request (code {}).",
             response.code
         )));
     }

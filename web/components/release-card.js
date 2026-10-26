@@ -1,59 +1,30 @@
 (() => {
-  function renderReleaseCard(release, compact = false, clickable = true) {
-    const article = document.createElement("article");
-    article.className = `release-card panel${compact ? " release-card-compact" : ""}`;
-    if (clickable) {
-      article.tabIndex = 0;
-      article.setAttribute("role", "button");
-      article.setAttribute("aria-label", `Открыть релиз: ${release.title_ru || release.title_original || "Без названия"}`);
-      article.dataset.releaseId = release.id;
-    }
+  function render(release) {
+    const card = document.createElement("div");
+    card.className = "release-card";
+    card.dataset.releaseId = release.id;
 
-    const title = document.createElement("h2");
-    title.className = "panel-title";
-    title.textContent = release.title_ru || release.title_original || "Без названия";
-    article.append(title);
+    const poster = release.image || release.poster_url || release.poster || "";
+    const title = release.title_ru || release.title_original || release.title || release.name || "Без названия";
+    const episodes = release.episodes_total || release.episodes_released || release.episodes_count || release.episodes || 0;
+    const year = release.year || "";
 
-    const imageUrl = release.image;
-    if (typeof imageUrl === "string" && imageUrl.startsWith("https://")) {
-      const poster = document.createElement("div");
-      poster.className = "release-poster-frame";
-      const image = document.createElement("img");
-      image.className = "release-poster";
-      image.src = imageUrl;
-      image.alt = `Постер: ${title.textContent}`;
-      image.loading = compact ? "lazy" : "eager";
-      image.decoding = "async";
-      image.referrerPolicy = "no-referrer";
-      image.addEventListener("error", () => {
-        poster.replaceChildren();
-        poster.classList.add("release-poster-unavailable");
-        poster.textContent = "Постер временно недоступен";
-      }, { once: true });
-      poster.append(image);
-      article.append(poster);
-    }
+    card.innerHTML = `
+      <div class="release-poster">
+        ${poster ? `<img src="${poster}" alt="${title}" loading="lazy" referrerpolicy="no-referrer">` : `<div class="poster-empty">🎬</div>`}
+        ${episodes > 0 ? `<div class="release-badge">${episodes} эп.</div>` : ""}
+      </div>
+      <div class="release-title">${title}</div>
+      ${year ? `<div class="release-meta">${year}</div>` : ""}
+    `;
 
-    const meta = document.createElement("p");
-    meta.className = "muted release-meta";
-    const details = [release.year, Number.isFinite(release.grade) && release.grade > 0 ? `★ ${release.grade.toFixed(1)}` : null]
-      .filter(Boolean);
-    meta.textContent = details.join(" · ");
-    if (details.length) article.append(meta);
+    card.addEventListener("click", () => {
+      const targetId = Number(release.action || release.id);
+      if (targetId > 0) window.appIpc.send({ action: "open_release", release_id: targetId });
+    });
 
-    if (release.description) {
-      const description = document.createElement("p");
-      description.className = "release-description";
-      description.textContent = release.description;
-      article.append(description);
-    }
-
-    const id = document.createElement("p");
-    id.className = "muted release-id";
-    id.textContent = `ID релиза: ${release.id}`;
-    article.append(id);
-    return article;
+    return card;
   }
 
-  window.releaseCard = { render: renderReleaseCard };
+  window.releaseCard = { render };
 })();

@@ -1,14 +1,10 @@
+use base64::Engine;
 use std::{env, fs, path::PathBuf};
 
 fn main() {
     let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
     let index_path = root.join("web/index.html");
-    let style_paths = [
-        "web/styles/tokens.css",
-        "web/styles/shell.css",
-        "web/styles/release-card.css",
-        "web/styles/release-detail.css",
-    ];
+    let style_paths = ["web/styles/desktop.css"];
     let script_paths = [
         "web/services/ipc.js",
         "web/components/navigation.js",
@@ -17,16 +13,16 @@ fn main() {
         "web/screens/discover.js",
         "web/screens/search.js",
         "web/screens/release-detail.js",
-        "web/screens/auth.js",
         "web/screens/bookmarks.js",
         "web/screens/feed.js",
         "web/screens/profile.js",
-        "web/screens/settings.js",
+        "web/screens/collections.js",
         "web/screens/schedule.js",
         "web/screens/filter.js",
-        "web/screens/collections.js",
         "web/screens/notifications.js",
         "web/screens/placeholder.js",
+        "web/screens/settings.js",
+        "web/screens/auth.js",
         "web/app.js",
     ];
 
@@ -62,6 +58,26 @@ fn main() {
         "<!-- INLINE_SCRIPTS -->",
         &format!("<script>\n{scripts}\n</script>"),
     );
+
+    let icon = [
+        ("public/icon.png", "image/png"),
+        ("public/icon", "image/png"),
+        ("public/icon.ico", "image/x-icon"),
+        ("public/icon.svg", "image/svg+xml"),
+        ("web/assets/icon.png", "image/png"),
+        ("web/assets/icon.svg", "image/svg+xml"),
+    ]
+    .iter()
+    .find_map(|(path, mime)| {
+        println!("cargo:rerun-if-changed={path}");
+        let bytes = fs::read(root.join(path)).ok()?;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+        Some(format!(
+            "<img src=\"data:{mime};base64,{encoded}\" alt=\"\" />"
+        ))
+    })
+    .unwrap_or_default();
+    html = replace_once(&html, "<!-- APP_ICON -->", &icon);
 
     let output =
         PathBuf::from(env::var_os("OUT_DIR").expect("build output directory")).join("index.html");

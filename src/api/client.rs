@@ -4,6 +4,7 @@ use reqwest::{
     blocking::{Client, Response},
 };
 use serde::{Serialize, de::DeserializeOwned};
+use std::time::Duration;
 
 #[derive(Clone)]
 pub struct ApiClient {
@@ -13,11 +14,22 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new() -> Result<Self, ApiError> {
-        let http = Client::builder()
+        let mut builder = Client::builder()
             .timeout(config::REQUEST_TIMEOUT)
-            .user_agent(config::USER_AGENT)
-            .build()
-            .map_err(ApiError::Transport)?;
+            .user_agent(config::USER_AGENT);
+
+        // reqwest otherwise inherits HTTP_PROXY/HTTPS_PROXY/ALL_PROXY. Some
+        // launch environments inject a loopback sink proxy (for example
+        // 127.0.0.1:9), which silently makes every API call wait until timeout.
+        // Use direct networking by default and allow an explicit proxy opt-in.
+        if let Ok(proxy_url) = std::env::var("ANIXART_HTTP_PROXY") {
+            let proxy = reqwest::Proxy::all(&proxy_url).map_err(ApiError::Transport)?;
+            builder = builder.proxy(proxy);
+        } else {
+            builder = builder.no_proxy();
+        }
+
+        let http = builder.build().map_err(ApiError::Transport)?;
         let seed = Url::parse(config::API_SEED)
             .map_err(|error| ApiError::InvalidUrl(error.to_string()))?;
         Ok(Self { http, seed })
@@ -96,5 +108,76 @@ impl ApiClient {
             })?;
         let bytes = response.bytes().map_err(ApiError::Transport)?;
         serde_json::from_slice(&bytes).map_err(ApiError::InvalidJson)
+    }
+
+    pub fn post_json_absolute<B: Serialize, T: DeserializeOwned>(
+        &self,
+        url: Url,
+        body: &B,
+    ) -> Result<T, ApiError> {
+        let response = self
+            .http
+            .post(url)
+            .json(body)
+            .send()
+            .map_err(ApiError::Transport)?
+            .error_for_status()
+            .map_err(|error| {
+                if let Some(status) = error.status() {
+                    ApiError::HttpStatus(status)
+                } else {
+                    ApiError::Transport(error)
+                }
+            })?;
+        let bytes = response.bytes().map_err(ApiError::Transport)?;
+        serde_json::from_slice(&bytes).map_err(ApiError::InvalidJson)
+    }
+
+    pub fn post_form<T: DeserializeOwned>(
+        &self,
+        url: Url,
+        fields: &[(&str, &str)],
+        header: Option<(&str, &str)>,
+    ) -> Result<T, ApiError> {
+        self.post_form_with_timeout(url, fields, header, config::REQUEST_TIMEOUT)
+    }
+
+    pub fn post_form_with_timeout<T: DeserializeOwned>(
+        &self,
+        url: Url,
+        fields: &[(&str, &str)],
+        header: Option<(&str, &str)>,
+        timeout: Duration,
+    ) -> Result<T, ApiError> {
+        let mut request = self.http.post(url).form(fields).timeout(timeout);
+        if let Some((name, value)) = header {
+            request = request.header(name, value);
+        }
+        let response = request
+            .send()
+            .map_err(ApiError::Transport)?
+            .error_for_status()
+            .map_err(|error| {
+                if let Some(status) = error.status() {
+                    ApiError::HttpStatus(status)
+                } else {
+                    ApiError::Transport(error)
+                }
+            })?;
+        let bytes = response.bytes().map_err(ApiError::Transport)?;
+        if bytes.is_empty() {
+            return Err(ApiError::InvalidResponse(
+                "API returned an empty response body.".to_owned(),
+            ));
+        }
+        serde_json::from_slice(&bytes).map_err(ApiError::InvalidJson)
+    }
+
+    pub fn post_form_absolute<T: DeserializeOwned>(
+        &self,
+        url: Url,
+        fields: &[(&str, &str)],
+    ) -> Result<T, ApiError> {
+        self.post_form(url, fields, None)
     }
 }

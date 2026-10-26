@@ -21,10 +21,10 @@
           <p>Новые эпизоды по дням недели</p>
         </header>
         <nav class="schedule-days" role="tablist">
-          ${days.map(([key, label]) => 
-            `<button class="schedule-day${key === selected ? " is-active" : ""}" 
-                     role="tab" 
-                     aria-selected="${key === selected}" 
+          ${days.map(([key, label]) =>
+            `<button class="schedule-day${key === selected ? " is-active" : ""}"
+                     role="tab"
+                     aria-selected="${key === selected}"
                      data-day="${key}">
               <span>${label}</span>
             </button>`
@@ -81,7 +81,7 @@
           <p class="error-message">${message}</p>
           <button type="button" id="retry-schedule">Повторить</button>
         </div>`;
-      
+
       root.querySelector("#retry-schedule")?.addEventListener("click", () => {
         root.innerHTML = '<p class="placeholder">Загружаем расписание…</p>';
         window.appIpc.send({ action: "load_schedule" });

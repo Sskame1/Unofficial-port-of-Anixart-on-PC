@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 pub struct ReleaseCard {
     pub id: u64,
     #[serde(default)]
+    pub action: Option<String>,
+    #[serde(default)]
     pub title_ru: Option<String>,
     #[serde(default)]
     pub title_original: Option<String>,
@@ -47,6 +49,12 @@ pub struct ReleaseCard {
     pub vote_count: Option<u64>,
     #[serde(default)]
     pub favorites_count: Option<u64>,
+    #[serde(default)]
+    pub screenshot_images: Vec<String>,
+    #[serde(default)]
+    pub related_releases: Vec<ReleaseCard>,
+    #[serde(default)]
+    pub recommended_releases: Vec<ReleaseCard>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -57,4 +65,21 @@ pub struct ReleaseCategory {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ReleaseStatus {
     pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct InterestingItem {
+    pub id: u64,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub image: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(rename = "type", default)]
+    pub item_type: i32,
+    #[serde(default)]
+    pub action: String,
+    #[serde(default)]
+    pub is_hidden: bool,
 }

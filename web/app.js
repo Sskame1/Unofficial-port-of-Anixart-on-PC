@@ -1,178 +1,232 @@
 (() => {
   let currentRoute = "home";
-  let previousRoute = "discover";
+  const volatileStorage = new Map();
+
+  function storageGet(key) {
+    try { return window.localStorage.getItem(key); } catch (_) { return volatileStorage.get(key) ?? null; }
+  }
+
+  function storageSet(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (_) { volatileStorage.set(key, String(value)); }
+  }
+
+  function readPreference(key, fallback) {
+    return storageGet(key) || fallback;
+  }
+
+  function writePreference(key, value) {
+    storageSet(key, value);
+  }
+
+  function navigate(route) {
+    currentRoute = route;
+    document.documentElement.dataset.route = route;
+    if (window.appNavigation) {
+      window.appNavigation.updateActive(route);
+    }
+    showRoute(route);
+  }
 
   function showRoute(route) {
-    if (route === "home") {
+    if (route === "home" && window.appScreens.home) {
       window.appScreens.home();
-    } else if (route === "discover") {
+    } else if (route === "discover" && window.appScreens.discover) {
       window.appScreens.discover();
-    } else if (route === "search") {
+    } else if (route === "search" && window.appScreens.search) {
       window.appScreens.search();
-    } else if (["signin", "signup", "restore", "verify"].includes(route)) {
-      window.appScreens.auth(route);
-    } else if (route === "bookmarks") {
+    } else if (route === "release" && window.releaseDetailScreen) {
+      window.releaseDetailScreen.render(window.app.currentRelease);
+    } else if (route === "watch" && window.releaseDetailScreen) {
+      window.releaseDetailScreen.renderWatch(window.app.currentRelease);
+    } else if (route === "bookmarks" && window.appScreens.bookmarks) {
       window.appScreens.bookmarks();
-    } else if (route === "feed") {
+    } else if (route === "feed" && window.appScreens.feed) {
       window.appScreens.feed();
-    } else if (route === "profile") {
+    } else if (route === "profile" && window.appScreens.profile) {
       window.appScreens.profile();
-    } else if (route === "settings") {
+    } else if (route === "settings" && window.appScreens.settings) {
       window.appScreens.settings();
-    } else if (route === "notifications") {
-      window.appScreens.notifications();
-    } else if (route === "schedule") {
+    } else if (route === "schedule" && window.appScreens.schedule) {
       window.appScreens.schedule();
-    } else if (route === "filter") {
+    } else if (route === "filter" && window.appScreens.filter) {
       window.appScreens.filter();
-    } else if (route === "collections") {
+    } else if (route === "collections" && window.appScreens.collections) {
       window.appScreens.collections();
-    } else if (route === "release") {
-      return;
-    } else if (!window.appScreens.renderPlaceholder(route)) {
-      setStatus("Неизвестный раздел", "Вернитесь на главный экран и попробуйте снова.");
-      return;
+    } else if (route === "notifications" && window.appScreens.notifications) {
+      window.appScreens.notifications();
+    } else if (["signin", "signup", "restore"].includes(route) && window.appScreens.auth) {
+      window.appScreens.auth(route);
+    } else if (window.appScreens.renderPlaceholder) {
+      window.appScreens.renderPlaceholder(route);
     }
-    currentRoute = route;
-    document.getElementById("app")?.classList.toggle("auth-mode", ["signin", "signup", "restore", "verify"].includes(route));
-    window.appNavigation.render(route);
-    const hint = document.getElementById("search-hint");
-    if (hint) hint.textContent = ({ home: "Поиск аниме", discover: "Поиск аниме", search: "Поиск аниме", bookmarks: "Поиск в закладках", feed: "Поиск записей и блогов", profile: "Поиск пользователей" })[route] || "Поиск аниме";
-  }
-
-  function setStatus(title, message) {
-    let status = document.getElementById("toast-status");
-    if (!status) {
-      status = document.createElement("div");
-      status.id = "toast-status";
-      status.className = "toast-status";
-      status.setAttribute("role", "status");
-      document.body.append(status);
-    }
-    status.textContent = `${title}: ${message}`;
-    status.classList.add("visible");
-    const discoverButton = document.getElementById("discover-random");
-    if (discoverButton) discoverButton.disabled = false;
-  }
-
-  function setEpisodePending(pending) {
-    const button = document.getElementById("episode-submit");
-    if (button) button.disabled = pending;
   }
 
   function receive(message) {
-    if (!message || typeof message !== "object") return;
-    if (message.event === "ready") {
-      showRoute(message.payload?.route || currentRoute);
-    } else if (message.event === "navigate") {
-      showRoute(message.payload?.route);
-    } else if (message.event === "status") {
-      setEpisodePending(false);
-      setStatus(message.payload?.title || "Статус", message.payload?.message || "");
-    } else if (message.event === "episode") {
-      setEpisodePending(false);
-      setStatus(message.payload?.name || "Эпизод", "Открываем страницу источника.");
-      const container = document.getElementById("player-container");
-      if (container) {
-        container.classList.remove("hidden");
-        container.innerHTML = "";
-        const frame = document.createElement("iframe");
-        frame.className = "player-frame";
-        frame.title = "Плеер эпизода";
-        frame.allow = "autoplay; fullscreen; picture-in-picture";
-        frame.allowFullscreen = true;
-        frame.referrerPolicy = "strict-origin-when-cross-origin";
-        frame.src = message.payload.url;
-        container.append(frame);
+    if (!message || !message.event) return;
+
+    if (message.event === "navigate") {
+      navigate(message.payload?.route || "home");
+    } else if (message.event === "ready") {
+      if (message.payload?.session) {
+        storageSet("anixart_session", JSON.stringify(message.payload.session));
+        storageSet("anixart_token", message.payload.session.token);
       }
-    } else if (message.event === "random_release") {
-      if (currentRoute === "home") window.appScreens.showHomeRelease(message.payload || {});
-      else window.appScreens.showRandomRelease(message.payload || {});
-    } else if (message.event === "random_release_error") {
-      if (currentRoute === "home") window.appScreens.showHomeError(message.payload?.message || "Ошибка запроса.");
-      else window.appScreens.showRandomError(message.payload?.message || "Ошибка запроса.");
-    } else if (message.event === "release_detail") {
-      currentRoute = "release";
-      window.appNavigation.render(previousRoute);
-      window.releaseDetailScreen.render(message.payload || {});
-    } else if (message.event === "episode_types") {
-      window.releaseDetailScreen.showTypes(message.payload || []);
-    } else if (message.event === "episode_sources") {
-      window.releaseDetailScreen.showSources(message.payload || []);
-    } else if (message.event === "episodes") {
-      window.releaseDetailScreen.showEpisodes(message.payload || []);
-    } else if (message.event === "feature_error") {
-      if (currentRoute === "release") window.releaseDetailScreen.showError(message.payload?.message || "Ошибка запроса.");
-      else setStatus("Ошибка", message.payload?.message || "Ошибка запроса.");
-    } else if (message.event === "search_pending") {
-      window.appScreens.showSearchPending(message.payload?.query || "");
-    } else if (message.event === "search_results") {
-      window.appScreens.showSearchResults(message.payload || []);
-    } else if (message.event === "search_error") {
-      window.appScreens.showSearchError(message.payload?.message || "Ошибка запроса.");
+      navigate(message.payload?.route || "home");
+    } else if (message.event === "profile_data") {
+      window.app.profileData = message.payload || null;
+      if (currentRoute === "profile") window.appScreens.profile?.();
+    } else if (message.event === "profile_error") {
+      window.app.profileError = message.payload?.message || "Не удалось загрузить профиль";
+      if (currentRoute === "profile") window.appScreens.profile?.();
+    } else if (message.event === "friends_data") {
+      window.appScreens.showFriends?.(message.payload || {});
+    } else if (message.event === "friends_error") {
+      window.appScreens.showFriendsError?.(message.payload?.message || "Не удалось загрузить друзей");
+    } else if (message.event === "article_data") {
+      window.appScreens.showArticle?.(message.payload || {});
+    } else if (message.event === "article_error") {
+      window.appScreens.showArticleError?.(message.payload?.message || "Не удалось открыть публикацию");
+    } else if (message.event === "bookmarks_data" || message.event === "history_data") {
+      if (currentRoute === "bookmarks") window.appScreens.showBookmarks?.(message.payload || {});
+    } else if (message.event === "bookmarks_error" || message.event === "history_error") {
+      if (currentRoute === "bookmarks") window.appScreens.showBookmarksError?.(message.payload?.message || "Не удалось загрузить список");
+    } else if (message.event === "feed_data") {
+      if (currentRoute === "feed") window.appScreens.showFeed?.(message.payload || {});
+    } else if (message.event === "feed_error") {
+      if (currentRoute === "feed" && (!message.payload?.request_id || message.payload.request_id === window.appFeedRequestId)) window.appScreens.showFeedError?.(message.payload?.message || "Не удалось загрузить ленту");
+    } else if (message.event === "collections_data") {
+      if (currentRoute === "collections" && (!message.payload?.request_id || message.payload.request_id === window.appCollectionRequestId)) window.appScreens.showCollections?.(message.payload || {});
+    } else if (message.event === "collections_error") {
+      if (currentRoute === "collections" && (!message.payload?.request_id || message.payload.request_id === window.appCollectionRequestId)) window.appScreens.showCollectionsError?.(message.payload?.message || "Не удалось загрузить коллекции");
+    } else if (message.event === "collection_data") {
+      if (currentRoute === "collections" && (!message.payload?.request_id || message.payload.request_id === window.appCollectionRequestId)) window.appScreens.showCollection?.(message.payload || {});
+    } else if (message.event === "account_error") {
+      window.app.setStatus("Аккаунт", message.payload?.message || "Требуется авторизация");
     } else if (message.event === "discover_page") {
-      window.appScreens.showDiscoverPage(message.payload || {});
+      window.appScreens.showDiscoverPage?.(message.payload || {});
     } else if (message.event === "discover_page_error") {
-      window.appScreens.showDiscoverError(message.payload?.message || "Ошибка запроса.");
+      window.appScreens.showDiscoverError?.(message.payload?.message || "Ошибка загрузки");
+    } else if (message.event === "search_results") {
+      window.appScreens.showSearchResults?.(message.payload || []);
+    } else if (message.event === "search_error") {
+      window.appScreens.showSearchError?.(message.payload?.message || "Ошибка поиска");
+    } else if (message.event === "release_detail") {
+      window.app.currentRelease = message.payload || {};
+      window.app.navigate("release");
+    } else if (message.event === "episode_types") {
+      window.releaseDetailScreen?.showTypes(message.payload || []);
+    } else if (message.event === "episode_sources") {
+      window.releaseDetailScreen?.showSources(message.payload || []);
+    } else if (message.event === "episodes") {
+      window.releaseDetailScreen?.showEpisodes(message.payload || []);
+    } else if (message.event === "feature_error") {
+      window.releaseDetailScreen?.showError(message.payload?.message || "Ошибка загрузки");
+    } else if (message.event === "release_comments_data") {
+      window.releaseDetailScreen?.showComments(message.payload || {});
+    } else if (message.event === "release_comments_error") {
+      window.releaseDetailScreen?.showCommentsError(message.payload?.message || "Не удалось загрузить отзывы");
     } else if (message.event === "schedule_data") {
-      window.appScreens.showSchedule(message.payload || {});
+      window.appScreens.showSchedule?.(message.payload || {});
     } else if (message.event === "schedule_error") {
-      window.appScreens.showScheduleError(message.payload?.message || "Ошибка запроса.");
+      window.appScreens.showScheduleError?.(message.payload?.message || "Ошибка загрузки");
     } else if (message.event === "filter_results") {
-      window.appScreens.showFilterResults(message.payload || {});
-    } else if (message.event === "filter_error") {
-      window.appScreens.showFilterError(message.payload?.message || "Ошибка запроса.");
-    } else if (message.event === "types_data") {
-      if (window.appScreens.loadFilterTypes) {
-        window.appScreens.loadFilterTypes(message.payload || []);
-      }
-    } else if (message.event === "types_error") {
-    } else if (message.event === "alert") {
-      setEpisodePending(false);
-      if (currentRoute === "search") {
-        window.appScreens.showSearchError(message.payload?.message || "Неизвестный запрос.");
-      } else if (["signin", "signup", "restore", "verify"].includes(currentRoute)) {
-        window.appScreens.showAuthError(message.payload?.message || "Неизвестная ошибка.");
+      if (currentRoute === "home") {
+        window.appScreens.showHomeResults?.(message.payload || {});
       } else {
-        setStatus("Ошибка", message.payload?.message || "Неизвестный запрос.");
+        window.appScreens.showFilterResults?.(message.payload || {});
       }
+    } else if (message.event === "filter_error") {
+      const homeResults = document.getElementById("home-results");
+      if (homeResults) {
+        const error = document.createElement("div");
+        error.className = "placeholder";
+        error.textContent = message.payload?.message || "Не удалось загрузить каталог";
+        homeResults.replaceChildren(error);
+      }
+      window.appScreens.showFilterError?.(message.payload?.message || "Ошибка фильтра");
+    } else if (message.event === "types_data") {
+      window.appScreens.loadFilterTypes?.(message.payload || []);
+    } else if (message.event === "auth_success") {
+      if (message.payload?.token) {
+        storageSet("anixart_token", message.payload.token);
+        storageSet("anixart_session", JSON.stringify(message.payload));
+      }
+      navigate("profile");
+    } else if (message.event === "auth_error") {
+      const submit = document.getElementById("auth-submit");
+      if (submit) { submit.disabled = false; submit.textContent = "Войти"; }
+      const error = message.payload?.message || "Не удалось войти";
+      if (window.appScreens.showAuthError) window.appScreens.showAuthError(error);
+      else window.app.setStatus("Авторизация", error);
+    } else if (message.event === "signed_out") {
+      storageSet("anixart_token", "");
+      storageSet("anixart_session", "");
+      window.app.profileData = null;
+      window.app.profileError = null;
+      navigate("signin");
     }
   }
 
   window.app = {
-    navigate(route) { window.appIpc.send({ action: "navigate", route }); },
-    auth(route = "signin") { showRoute(route); },
-    openRelease(releaseId) { previousRoute = currentRoute; window.appIpc.send({ action: "open_release", release_id: releaseId }); },
-    backFromRelease() { showRoute(previousRoute); },
-    setStatus,
-    setEpisodePending,
+    navigate,
     receive,
+    currentRelease: null,
+    profileData: null,
+    profileError: null,
+    backFromRelease() {
+      navigate("discover");
+    },
+    auth(route = "signin") {
+      navigate(route);
+    },
+    setTheme(theme) {
+      const nextTheme = theme === "dark" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      writePreference("theme", nextTheme);
+      updateThemeControls();
+    },
+    toggleTheme() {
+      const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+      window.app.setTheme(current === "dark" ? "light" : "dark");
+    },
+    setStatus(title, message) {
+      window.alert(`${title}: ${message}`);
+    }
   };
 
-  document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("global-search")?.addEventListener("click", () => window.app.navigate("search"));
-    document.getElementById("open-settings")?.addEventListener("click", () => window.app.navigate("settings"));
-    document.getElementById("open-notifications")?.addEventListener("click", () => window.app.navigate("notifications"));
-    document.getElementById("screen-content")?.addEventListener("click", event => {
-      const feature = event.target.closest(".home-feature[data-release-id]");
-      if (feature) { window.app.openRelease(Number(feature.dataset.releaseId)); return; }
-      const card = event.target.closest("[data-release-id]");
-      if (card) window.app.openRelease(Number(card.dataset.releaseId));
-    });
-    document.getElementById("screen-content")?.addEventListener("keydown", event => {
-      const feature = event.target.closest(".home-feature[data-release-id]");
-      if (feature && (event.key === "Enter" || event.key === " ")) {
-        event.preventDefault();
-        window.app.openRelease(Number(feature.dataset.releaseId));
-        return;
-      }
-      const card = event.target.closest('[data-release-id][role="button"]');
-      if (card && (event.key === "Enter" || event.key === " ")) {
-        event.preventDefault();
-        window.app.openRelease(Number(card.dataset.releaseId));
-      }
-    });
-    showRoute(currentRoute);
-    window.appNavigation.render(currentRoute);
-  });
+  window.appStorage = { get: storageGet, set: storageSet };
+
+  function updateThemeControls() {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const themeToggle = document.getElementById("theme-toggle");
+    if (!themeToggle) return;
+    themeToggle.classList.toggle("is-dark", isDark);
+    themeToggle.classList.toggle("is-light", !isDark);
+    themeToggle.setAttribute("aria-label", isDark ? "Включить светлую тему" : "Включить темную тему");
+  }
+
+  function initializeApp() {
+    const savedTheme = readPreference("theme", "dark");
+    document.documentElement.setAttribute("data-theme", savedTheme);
+
+    // Рендерим навигацию
+    if (window.appNavigation) {
+      window.appNavigation.render();
+    }
+
+    const themeToggle = document.getElementById("theme-toggle");
+    if (themeToggle && themeToggle.dataset.bound !== "true") {
+      themeToggle.addEventListener("click", () => window.app.toggleTheme());
+      themeToggle.dataset.bound = "true";
+    }
+
+    document.querySelector(".sidebar-footer [data-route=\"settings\"]")?.addEventListener("click", () => navigate("settings"));
+    updateThemeControls();
+
+    // Показываем начальный маршрут
+    navigate("home");
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initializeApp, { once: true });
+  else initializeApp();
 })();

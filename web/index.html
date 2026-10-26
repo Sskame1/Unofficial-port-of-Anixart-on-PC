@@ -1,25 +1,41 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark light">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Anixart</title>
   <!-- INLINE_STYLES -->
 </head>
 <body>
   <div id="app">
-    <header class="topbar">
-      <button class="search-launch" id="global-search" type="button" aria-label="Поиск релизов">
-        <span class="search-icon" aria-hidden="true"></span><span id="search-hint">Поиск аниме</span>
-      </button>
-      <div class="top-actions">
-        <button class="icon-button" id="open-settings" type="button" aria-label="Настройки" title="Настройки"><span class="settings-icon" aria-hidden="true">⚙</span></button>
-        <button class="icon-button" id="open-notifications" type="button" aria-label="Уведомления" title="Уведомления"><span class="bell-icon" aria-hidden="true">♧</span></button>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h1><span class="brand-icon" aria-hidden="true"><!-- APP_ICON --></span>Anixart</h1>
       </div>
-    </header>
-    <main id="screen-content" aria-live="polite"></main>
-    <nav id="bottom-nav" class="bottom-nav" aria-label="Основная навигация"></nav>
+      <nav class="sidebar-nav" id="sidebar-nav" aria-label="Основная навигация">
+        <button class="nav-item" type="button" data-route="home"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg></span><span>Главная</span></button>
+        <button class="nav-item" type="button" data-route="discover"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></span><span>Обзор</span></button>
+        <button class="nav-item" type="button" data-route="bookmarks"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V21l-6-3.5L6 21z"/></svg></span><span>Закладки</span></button>
+        <button class="nav-item" type="button" data-route="feed"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span><span>Лента</span></button>
+        <button class="nav-item" type="button" data-route="profile"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span><span>Профиль</span></button>
+        <button class="nav-item" type="button" data-route="schedule"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/></svg></span><span>Расписание</span></button>
+        <button class="nav-item" type="button" data-route="filter"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10m-7 6h4"/></svg></span><span>Фильтр</span></button>
+        <button class="nav-item" type="button" data-route="collections"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg></span><span>Коллекции</span></button>
+        <button class="nav-item" type="button" data-route="notifications"><span class="nav-item-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span><span>Уведомления</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Переключить тему" title="Переключить тему">
+          <span class="nav-item-icon" aria-hidden="true">
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg>
+          </span>
+        </button>
+        <button class="nav-item settings-icon-button" type="button" data-route="settings" aria-label="Открыть настройки" title="Настройки">
+          <span class="nav-item-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 13.5 1.1.9-1.1 2-1.4-.5a7.7 7.7 0 0 1-1.5.9l-.2 1.5h-2.4l-.4-1.4a7.7 7.7 0 0 1-1.7 0l-.8 1.2-2.1-1.1.4-1.5a7.7 7.7 0 0 1-1-1.4l-1.5-.1v-2.4l1.4-.5a7.7 7.7 0 0 1 .4-1.6L7.5 8.4l1.4-2 1.4.7a7.7 7.7 0 0 1 1.6-.6l.4-1.5h2.4l.4 1.5a7.7 7.7 0 0 1 1.5.7l1.4-.7 1.4 2-1 1.2a7.7 7.7 0 0 1 .4 1.7l1.4.5v2.4Z" transform="translate(-1 -1) scale(1.04)"/></svg></span>
+        </button>
+      </div>
+    </aside>
+    <main class="main-content" id="screen-content"></main>
   </div>
   <!-- INLINE_SCRIPTS -->
 </body>

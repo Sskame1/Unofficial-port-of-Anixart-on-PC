@@ -12,12 +12,14 @@ A Rust desktop port based on the user-provided Anixart APK. The first interface 
 - Home and Discover request a random public release through Anixart's guest API. Cards show available fields and open a release details screen.
 - Release details load the release, audio/subtitle types, sources, and episodes through the APK-observed API chain. Opening a Kodik iframe hands off to the provider page; video playback is unconfirmed.
 - The top search button opens a guest release search screen. APK-observed request details are implemented; end-to-end use after the latest update has not yet been verified.
+- Password sign-in follows the APK's form request and response model. Google sign-in follows Google OAuth → Firebase ID token → Anixart `auth/google`; it requires `ANIXART_GOOGLE_CLIENT_ID` to be a desktop OAuth client registered for the same Firebase project as Anixart. The APK only provides an Android client ID, so Google sign-in is not ready for live use until Anixart's desktop OAuth client is available.
+- A successful session is persisted in Windows Credential Manager. Authenticated profile, history, favorites, personal lists, and feed requests use the saved token; profile data includes counters, viewing dynamics, and recently watched releases.
 - Discover now requests recommendations, discussing, and watching pages; schedule loads all seven weekday lists; the filter submits a year range and APK sort value. These endpoint integrations compile, but this environment's configured proxy prevents live API verification. The filter's remaining APK fields are still to be wired into controls.
 - The episode form still requests guest episode metadata and opens the provider's Kodik page in an embedded frame. Actual episode playback has not been confirmed; the provider page may show its own ads.
-- The APK has 42 API interfaces and hundreds of layouts; most screens and account features are not implemented yet.
+- The APK has 42 API interfaces and hundreds of layouts; social actions, collections, notifications, and full playback parity are still incomplete.
 - A Kodik page was reached, but video playback has not been confirmed. The tested direct media endpoint required dynamic `IP`, `deadline`, and `sign` validation. This project does not bypass that validation.
 
-The user confirmed that `cargo run` previously launched successfully and the catalog returned live data. Several new HTML screens have not been verified in a running window because WebView2 returned `0x8000FFFF`. The current environment cannot reach Anixart because its configured proxy rejects requests at `127.0.0.1:9`; the newly added schedule, discover, and filter endpoints therefore have compile-time, not live-service, verification. Network-backed sign-in, account lists, feed, and profile remain to be implemented. Direct video playback is not confirmed.
+The user confirmed that `cargo run` previously launched successfully and the catalog returned live data. Several new HTML screens have not been verified in a running window because WebView2 returned `0x8000FFFF`. The current environment cannot reach Anixart because its configured proxy rejects requests at `127.0.0.1:9`; account, schedule, discover, and filter endpoints therefore have compile-time, not live-service, verification. Direct video playback is not confirmed.
 
 ## Build and run
 

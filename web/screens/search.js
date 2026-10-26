@@ -1,70 +1,91 @@
 (() => {
-  let submittedQuery = "";
+  let searchQuery = "";
+  let searchResults = [];
 
   function renderSearch() {
-    const main = document.getElementById("screen-content");
-    main.innerHTML = `
-      <section class="screen" aria-labelledby="screen-title">
-        <h1 class="screen-title" id="screen-title">Поиск</h1>
-        <form id="release-search-form" class="search-form">
-          <label class="field-label" for="release-query">Название релиза</label>
-          <div class="search-row">
-            <input id="release-query" name="query" type="search" maxlength="120" autocomplete="off" placeholder="Введите название" required>
-            <button class="primary-button" id="release-search-submit" type="submit">Найти</button>
-          </div>
-        </form>
-        <div id="search-results" class="search-results" aria-live="polite">
-          <div class="placeholder">Введите название и нажмите «Найти».</div>
+    const root = document.getElementById("screen-content");
+    root.innerHTML = `
+      <div class="screen-header">
+        <h1>Поиск</h1>
+        <p>Найдите аниме по названию</p>
+      </div>
+
+      <div class="profile-section">
+        <div style="display: flex; gap: 12px;">
+          <input
+            type="text"
+            id="search-input"
+            placeholder="Введите название аниме..."
+            style="flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-primary); color: var(--text-primary); font-size: 15px;"
+          >
+          <button class="btn btn-primary" id="search-btn" style="padding: 12px 24px;">
+            Искать
+          </button>
         </div>
-      </section>`;
+      </div>
 
-    const form = main.querySelector("#release-search-form");
-    const input = main.querySelector("#release-query");
-    input.value = submittedQuery;
-    form.addEventListener("submit", event => {
-      event.preventDefault();
-      submittedQuery = input.value.trim();
-      if (!submittedQuery) return;
-      main.querySelector("#release-search-submit").disabled = true;
-      window.appIpc.send({ action: "search_releases", query: submittedQuery });
+      <div id="search-results" class="release-grid"></div>
+    `;
+
+    const input = root.querySelector("#search-input");
+    const btn = root.querySelector("#search-btn");
+
+    const performSearch = () => {
+      searchQuery = input.value.trim();
+      if (searchQuery) {
+        const results = document.getElementById("search-results");
+        results.innerHTML = `
+          <div class="placeholder">
+            <div class="placeholder-icon">🔍</div>
+            <p>Ищем "${searchQuery}"...</p>
+          </div>
+        `;
+        window.appIpc.send({ action: "search_releases", query: searchQuery });
+      }
+    };
+
+    btn.addEventListener("click", performSearch);
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") performSearch();
     });
+
+    input.focus();
   }
 
-  function showSearchPending(query) {
+  function showResults(releases) {
     const results = document.getElementById("search-results");
-    if (results) results.innerHTML = `<div class="placeholder"></div>`;
-    const pending = results?.querySelector(".placeholder");
-    if (pending) pending.textContent = `Ищем «${query}»…`;
-  }
-
-  function showSearchResults(releases) {
-    const results = document.getElementById("search-results");
-    const button = document.getElementById("release-search-submit");
     if (!results) return;
-    if (button) button.disabled = false;
-    if (!releases.length) {
-      results.innerHTML = '<div class="placeholder">Ничего не найдено.</div>';
+
+    if (!releases || releases.length === 0) {
+      results.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">📭</div>
+          <p>По запросу "${searchQuery}" ничего не найдено</p>
+        </div>
+      `;
       return;
     }
-    results.replaceChildren(...releases.map(release => window.releaseCard.render(release, true)));
+
+    searchResults = releases;
+    results.replaceChildren(...releases.map(release => window.releaseCard.render(release)));
   }
 
-  function showSearchError(message) {
+  function showError(message) {
     const results = document.getElementById("search-results");
-    const button = document.getElementById("release-search-submit");
-    if (button) button.disabled = false;
-    if (!results) return;
-    const error = document.createElement("div");
-    error.className = "placeholder";
-    error.textContent = `Поиск не выполнен: ${message}`;
-    results.replaceChildren(error);
+    if (results) {
+      results.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">⚠️</div>
+          <p>Ошибка поиска: ${message}</p>
+        </div>
+      `;
+    }
   }
 
   window.appScreens = {
     ...(window.appScreens || {}),
     search: renderSearch,
-    showSearchPending,
-    showSearchResults,
-    showSearchError,
+    showSearchResults: showResults,
+    showSearchError: showError
   };
 })();

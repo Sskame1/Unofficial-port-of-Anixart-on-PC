@@ -1,8 +1,10 @@
 use crate::api::ApiClient;
+use crate::features::auth::session::AuthSession;
 
 pub struct AppState {
     pub api: ApiClient,
     current_route: String,
+    pub session: Option<AuthSession>,
 }
 
 impl AppState {
@@ -10,6 +12,7 @@ impl AppState {
         Self {
             api,
             current_route: "home".to_owned(),
+            session: None,
         }
     }
 
@@ -35,6 +38,7 @@ impl AppState {
                 | "feed"
                 | "profile"
                 | "release"
+                | "watch"
                 | "schedule"
                 | "collections"
                 | "filter"
