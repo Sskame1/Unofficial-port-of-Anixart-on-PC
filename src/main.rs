@@ -776,7 +776,7 @@ fn start() -> Result<()> {
             Event::UserEvent(AppEvent::EpisodeResolved(Err(error))) => {
                 let _ = deliver(
                     &webview,
-                    "status",
+                    "episode_error",
                     serde_json::json!({
                         "title": "Could not open episode",
                         "message": error

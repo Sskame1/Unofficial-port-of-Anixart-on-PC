@@ -137,6 +137,10 @@
       window.releaseDetailScreen?.showSources(message.payload || []);
     } else if (message.event === "episodes") {
       window.releaseDetailScreen?.showEpisodes(message.payload || []);
+    } else if (message.event === "episode") {
+      window.releaseDetailScreen?.showEpisode(message.payload || {});
+    } else if (message.event === "episode_error") {
+      window.releaseDetailScreen?.showError(message.payload?.message || "Не удалось открыть эпизод.");
     } else if (message.event === "feature_error") {
       window.releaseDetailScreen?.showError(message.payload?.message || "Ошибка загрузки");
     } else if (message.event === "release_comments_data") {

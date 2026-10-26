@@ -570,9 +570,50 @@ body {
 .list-picker header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .list-picker header button { border: 0; background: none; color: var(--text-secondary); font-size: 24px; cursor: pointer; }
 .list-picker > button { display: block; width: 100%; margin-top: 8px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-primary); color: var(--text-primary); text-align: left; cursor: pointer; }
+.list-picker > button { display: flex; justify-content: space-between; align-items: center; }
+.list-picker > button.is-current { border-color: var(--purple-accent, var(--accent)); color: var(--purple-accent, var(--accent)); background: var(--accent-tint, var(--bg-primary)); }
+.list-picker-check { font-size: 18px; }
+.watch-button { flex: 1 1 260px; min-height: 52px; border: 0 !important; border-radius: 14px !important; background: linear-gradient(135deg, #e9def7, #c9b8e8) !important; color: #241b30 !important; font-size: 16px; font-weight: 750; box-shadow: 0 8px 20px rgb(126 92 171 / 22%); }
+.watch-button:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.release-action { min-width: 110px; min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer; }
+.release-action.is-selected { color: var(--purple-accent, var(--accent)); border-color: var(--purple-accent, var(--accent)); background: var(--accent-tint, var(--bg-primary)); }
+.release-action.is-selected span { color: var(--purple-accent, var(--accent)); }
+.watch-back-button { margin: 0 0 18px; border: 0; background: none; color: var(--text-secondary); font-size: 14px; cursor: pointer; }
+.watch-screen-header { margin-bottom: 22px; text-align: center; }
+.watch-screen-header h1 { margin: 0; font-size: clamp(24px, 3vw, 34px); }
+.watch-screen-header p { margin-top: 6px; color: var(--text-secondary); }
+.watch-choice-section { display: grid; gap: 16px; }
+.watch-section-title { display: flex; align-items: center; gap: 12px; }
+.watch-section-title h2 { margin: 0; font-size: 19px; }
+.watch-section-title > span { margin-left: auto; color: var(--text-secondary); font-size: 13px; }
+.watch-inline-back { border: 0; background: none; color: var(--purple-accent, var(--accent)); cursor: pointer; }
+.episode-choice-list { display: grid; gap: 8px; max-width: 780px; margin: auto; width: 100%; }
+.episode-choice-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; align-items: center; gap: 14px; width: 100%; min-height: 76px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-primary); color: var(--text-primary); text-align: left; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.episode-choice-row:hover { border-color: var(--purple-accent, var(--accent)); background: var(--accent-tint, var(--bg-secondary)); transform: translateY(-1px); }
+.episode-choice-icon { display: grid; place-items: center; width: 54px; height: 54px; overflow: hidden; border-radius: 13px; background: linear-gradient(135deg, var(--border), var(--bg-secondary)); color: var(--text-secondary); font-size: 22px; }
+.episode-choice-icon img { width: 100%; height: 100%; object-fit: cover; }
+.episode-choice-copy { display: grid; gap: 4px; min-width: 0; }
+.episode-choice-copy strong { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.episode-choice-copy strong em { padding: 2px 6px; border: 1px solid var(--text-secondary); border-radius: 4px; color: var(--text-secondary); font-size: 9px; font-style: normal; }
+.episode-choice-copy > span, .episode-choice-views { color: var(--text-secondary); font-size: 13px; }
+.episode-choice-views { white-space: nowrap; }
+.episode-choice-arrow { color: var(--text-secondary); font-size: 25px; }
+.episode-list-note, .release-comments-hint { margin: -7px 0 0; color: var(--text-secondary); font-size: 13px; }
+.episode-list { display: grid; gap: 4px; }
+.episode-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; text-align: left; }
+.episode-item-title { flex: 1; }
+.episode-item-status { color: var(--text-secondary); font-size: 21px; }
+.episode-item.is-watched { border-color: color-mix(in srgb, var(--purple-accent, var(--accent)) 60%, var(--border)); }
+.episode-item.is-watched .episode-item-status { color: #80b889; }
+.episode-filler-tag { padding: 2px 6px; border-radius: 4px; background: var(--border); color: var(--text-secondary); font-size: 10px; }
+.embedded-player-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.embedded-player-heading button { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; }
+.player-panel iframe { display: block; width: 100%; min-height: min(70vh, 680px); border: 0; border-radius: 10px; background: #000; }
+.release-comments-list { display: grid; gap: 0; }
 ::selection { background: var(--purple-accent, #a78bfa); color: #17131f; }
 @media (max-width: 900px) { .filter-fields { grid-template-columns: repeat(2, minmax(160px, 1fr)); } }
 @media (max-width: 560px) { .filter-fields { grid-template-columns: 1fr; } .collection-card-image { flex-basis: 110px; } .feature-header { gap: 10px; } }
+@media (max-width: 560px) { .episode-choice-row { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; padding: 9px; } .episode-choice-icon { width: 44px; height: 44px; border-radius: 10px; } .episode-choice-views { font-size: 11px; } .release-actionbar { gap: 7px; } .release-action { min-width: 0; flex: 1 1 90px; } .watch-button { flex-basis: 100%; } .watch-screen .episode-picker { padding: 15px; } }
 
 [data-theme="dark"] .profile-chart-bar {
   background: var(--purple-accent, #a78bfa);

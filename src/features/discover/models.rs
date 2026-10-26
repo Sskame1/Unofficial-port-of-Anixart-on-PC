@@ -49,6 +49,12 @@ pub struct ReleaseCard {
     pub vote_count: Option<u64>,
     #[serde(default)]
     pub favorites_count: Option<u64>,
+    #[serde(rename = "profile_list_status", default)]
+    pub profile_list_status: Option<i32>,
+    #[serde(rename = "is_favorite", default)]
+    pub is_favorite: Option<bool>,
+    #[serde(rename = "is_viewed", default)]
+    pub is_viewed: Option<bool>,
     #[serde(default)]
     pub screenshot_images: Vec<String>,
     #[serde(default)]
