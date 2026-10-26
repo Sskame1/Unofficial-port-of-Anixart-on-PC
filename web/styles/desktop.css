@@ -609,6 +609,12 @@ body {
 .embedded-player-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .embedded-player-heading button { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; }
 .player-panel iframe { display: block; width: 100%; min-height: min(70vh, 680px); border: 0; border-radius: 10px; background: #000; }
+.player-page { max-width: 1180px; margin: 0 auto; padding-bottom: 32px; }
+.player-page-heading { margin: 18px 0 20px; }
+.player-page-heading p { margin: 0 0 5px; color: var(--text-secondary); font-size: 14px; }
+.player-page-heading h1 { margin: 0; font-size: clamp(22px, 3vw, 34px); }
+.player-page .player-panel { margin: 0; padding: 12px; }
+.player-page .player-panel iframe { min-height: min(76vh, 760px); }
 .release-comments-list { display: grid; gap: 0; }
 ::selection { background: var(--purple-accent, #a78bfa); color: #17131f; }
 @media (max-width: 900px) { .filter-fields { grid-template-columns: repeat(2, minmax(160px, 1fr)); } }

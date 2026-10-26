@@ -29,6 +29,11 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", index_path.display());
     let mut html = fs::read_to_string(&index_path).expect("read web/index.html");
+    let logo_path = root.join("web/assets/logo.png");
+    println!("cargo:rerun-if-changed={}", logo_path.display());
+    let app_icon =
+        PathBuf::from(env::var_os("OUT_DIR").expect("build output directory")).join("app-icon.png");
+    resize_png_for_sidebar(&logo_path, &app_icon);
     println!("cargo:rerun-if-changed={}", filter_options_path.display());
     let filter_options = fs::read_to_string(filter_options_path).expect("read filter options");
     html = replace_once(

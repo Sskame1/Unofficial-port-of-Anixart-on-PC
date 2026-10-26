@@ -3,6 +3,9 @@
   let selectedType = null;
   let selectedSource = null;
   let pendingListType = null;
+  let episodeTypes = [];
+  let episodeSources = [];
+  let episodeItems = [];
 
   function renderReleaseDetail(release) {
     selectedRelease = release;
@@ -134,12 +137,46 @@
   function renderWatch(release) {
     if (!release) return renderReleaseDetail({});
     const main = document.getElementById("screen-content");
-    main.innerHTML = `<section class="screen watch-screen"><button class="watch-back-button" id="watch-back" type="button">← <span>К релизу</span></button><header class="watch-screen-header"><h1>Выберите озвучку</h1><p>${escapeHtml(release.title_ru || release.title_original || "Просмотр")}</p></header><section class="episode-picker" id="episode-picker"><div class="watch-choice-section"><div class="watch-section-title"><h2>Озвучки и субтитры</h2><span id="episode-type-count"></span></div><div id="episode-type-list" class="episode-choice-list"><div class="placeholder">Загружаем доступные варианты…</div></div></div><div class="watch-choice-section hidden" id="episode-source-section"><div class="watch-section-title"><button class="watch-inline-back" id="episode-source-back" type="button">← Озвучки</button><h2 id="episode-source-heading">Выберите источник</h2></div><div id="episode-source-list" class="episode-choice-list"></div></div><div class="watch-choice-section hidden" id="episode-list-section"><div class="watch-section-title"><button class="watch-inline-back" id="episode-list-back" type="button">← Источники</button><h2 id="episode-list-heading">Серии</h2></div><p class="episode-list-note">Нажмите на серию, чтобы открыть плеер</p><div id="episode-list" class="episode-list"><div class="placeholder">Выберите источник</div></div></div></section><section class="player-panel hidden" id="player-container" aria-label="Плеер эпизода"></section></section>`;
-    selectedRelease = release; selectedType = null; selectedSource = null;
+    main.innerHTML = `<section class="screen watch-screen"><button class="watch-back-button" id="watch-back" type="button">← <span>К релизу</span></button><header class="watch-screen-header"><h1>Выберите озвучку</h1><p>${escapeHtml(release.title_ru || release.title_original || "Просмотр")}</p></header><section class="episode-picker" id="episode-picker"><div class="watch-choice-section"><div class="watch-section-title"><h2>Озвучки и субтитры</h2><span id="episode-type-count"></span></div><div id="episode-type-list" class="episode-choice-list"><div class="placeholder">Загружаем доступные варианты…</div></div></div><div class="watch-choice-section hidden" id="episode-source-section"><div class="watch-section-title"><button class="watch-inline-back" id="episode-source-back" type="button">← Озвучки</button><h2 id="episode-source-heading">Выберите источник</h2></div><div id="episode-source-list" class="episode-choice-list"></div></div><div class="watch-choice-section hidden" id="episode-list-section"><div class="watch-section-title"><button class="watch-inline-back" id="episode-list-back" type="button">← Источники</button><h2 id="episode-list-heading">Серии</h2></div><p class="episode-list-note">Нажмите на серию, чтобы открыть плеер</p><div id="episode-list" class="episode-list"><div class="placeholder">Выберите источник</div></div></div></section></section>`;
+    selectedRelease = release;
     document.getElementById("watch-back").addEventListener("click", () => window.app.navigate("release"));
     document.getElementById("episode-source-back").addEventListener("click", showTypeChoices);
     document.getElementById("episode-list-back").addEventListener("click", showSourceChoices);
+    document.getElementById("episode-type-list").innerHTML = '<div class="placeholder">Загружаем доступные варианты…</div>';
+    if (episodeTypes.length) showTypes(episodeTypes);
+    if (selectedType && episodeSources.length) showSources(episodeSources);
+    if (selectedSource && episodeItems.length) {
+      const selected = episodeSources.find(item => Number(item.id) === selectedSource);
+      document.getElementById("episode-list-heading").textContent = selected?.name || "Серии";
+      showEpisodes(episodeItems);
+      showEpisodeChoices();
+    } else if (selectedType) {
+      showSourceChoices();
+    }
     window.appIpc.send({ action: "load_episode_types", release_id: release.id });
+  }
+  function renderPlayer(release, episode) {
+    const main = document.getElementById("screen-content");
+    if (!episode) {
+      main.innerHTML = '<section class="screen player-page"><p class="placeholder">Серия не выбрана.</p><button class="watch-back-button" id="player-back" type="button">← К сериям</button></section>';
+      document.getElementById("player-back").addEventListener("click", () => window.app.navigate("watch"));
+      return;
+    }
+    const url = String(episode.url || "");
+    const title = escapeHtml(episode.name || "Эпизод");
+    const releaseTitle = escapeHtml(release?.title_ru || release?.title_original || "Просмотр");
+    if (!/^https:\/\//i.test(url)) {
+      main.innerHTML = `<section class="screen player-page"><button class="watch-back-button" id="player-back" type="button">← <span>К сериям</span></button><p class="placeholder">Ссылка на видеоплеер имеет неподдерживаемый формат.</p></section>`;
+    } else {
+      main.innerHTML = `<section class="screen player-page"><button class="watch-back-button" id="player-back" type="button">← <span>К сериям</span></button><header class="player-page-heading"><p>${releaseTitle}</p><h1>${title}</h1></header><section class="player-panel" aria-label="Плеер эпизода"><iframe title="${title}" src="${escapeHtml(url)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></section></section>`;
+    }
+    document.getElementById("player-back").addEventListener("click", () => window.app.navigate("watch"));
+  }
+  function showPlayerError(message) {
+    const main = document.getElementById("screen-content");
+    if (!main || !document.documentElement.dataset.route.includes("player")) return;
+    main.innerHTML = `<section class="screen player-page"><button class="watch-back-button" id="player-back" type="button">← <span>К сериям</span></button><p class="placeholder">Не удалось открыть эпизод: ${escapeHtml(message)}</p></section>`;
+    document.getElementById("player-back").addEventListener("click", () => window.app.navigate("watch"));
   }
   function setWatchSection(activeId) { ["episode-type-list", "episode-source-section", "episode-list-section"].forEach(id => { const node = document.getElementById(id); if (!node) return; node.classList.toggle("hidden", id !== activeId); }); }
   function formatCount(value) { const count = Number(value) || 0; return count >= 1_000_000 ? `${(count / 1_000_000).toFixed(1).replace(".0", "")} млн` : count >= 1_000 ? `${Math.round(count / 1_000)} тыс.` : String(count); }
@@ -149,6 +186,7 @@
   function showEpisodeChoices() { setWatchSection("episode-list-section"); }
   function renderEpisodeState(message) { const list = document.getElementById("episode-list"); if (list) { const node = document.createElement("div"); node.className = "placeholder"; node.textContent = message; list.replaceChildren(node); } }
   function showTypes(items) {
+    episodeTypes = items;
     const list = document.getElementById("episode-type-list"); if (!list) return;
     document.getElementById("episode-type-count").textContent = `${items.length} вариантов`;
     if (!items.length) { list.innerHTML = '<p class="placeholder">Для этого релиза нет доступных озвучек или субтитров.</p>'; return; }
@@ -159,6 +197,7 @@
     }));
   }
   function showSources(items) {
+    episodeSources = items;
     const list = document.getElementById("episode-source-list"); if (!list) return;
     if (!items.length) { list.innerHTML = '<p class="placeholder">Для выбранной озвучки источники не найдены.</p>'; return; }
     if (items.length === 1) { selectSource(items[0]); return; }
@@ -171,11 +210,13 @@
   }
   function selectSource(item) {
     selectedSource = Number(item.id);
+    episodeItems = [];
     document.getElementById("episode-list-heading").textContent = item.name || "Серии";
     renderEpisodeState("Загружаем эпизоды…"); showEpisodeChoices();
     window.appIpc.send({ action: "load_episodes", release_id: selectedRelease.id, type_id: selectedType, source_id: selectedSource });
   }
   function showEpisodes(items) {
+    episodeItems = items;
     const list = document.getElementById("episode-list"); if (!list) return;
     if (!items.length) return renderEpisodeState("Эпизоды не найдены.");
     list.replaceChildren(...items.map(item => {
@@ -184,15 +225,10 @@
     }));
   }
   function showEpisode(episode) {
-    const panel = document.getElementById("player-container");
-    if (!panel) return;
     const url = String(episode?.url || "");
     if (!/^https:\/\//i.test(url)) return showError("Ссылка на видеоплеер имеет неподдерживаемый формат.");
-    const title = escapeHtml(episode.name || "Эпизод");
-    panel.classList.remove("hidden");
-    panel.innerHTML = `<div class="embedded-player-heading"><strong>${title}</strong><button type="button" id="player-close">Закрыть плеер</button></div><iframe title="${title}" src="${escapeHtml(url)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
-    panel.querySelector("#player-close")?.addEventListener("click", () => { panel.classList.add("hidden"); panel.replaceChildren(); });
-    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.app.currentEpisode = episode;
+    window.app.navigate("player");
   }
   function showError(message) {
     const targets = ["episode-type-list", "episode-source-section", "episode-list-section"];
@@ -206,5 +242,5 @@
     root.innerHTML = items.length ? items.map(item => `<article class="release-comment"><strong>${escapeHtml(item.profile?.login || "Пользователь")}</strong><p>${escapeHtml(item.message || "")}</p></article>`).join("") : '<p class="placeholder">Отзывов пока нет.</p>';
   }
   function showCommentsError(message) { const root = document.getElementById("release-comments-list"); if (root) root.innerHTML = `<p class="placeholder">Не удалось загрузить отзывы: ${escapeHtml(message)}</p>`; }
-  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, showTypes, showSources, showEpisodes, showEpisode, showError, showComments, showCommentsError, listDone, listError };
+  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showComments, showCommentsError, listDone, listError };
 })();

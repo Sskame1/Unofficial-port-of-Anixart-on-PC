@@ -55,6 +55,8 @@
       window.releaseDetailScreen.render(window.app.currentRelease);
     } else if (route === "watch" && window.releaseDetailScreen) {
       window.releaseDetailScreen.renderWatch(window.app.currentRelease);
+    } else if (route === "player" && window.releaseDetailScreen) {
+      window.releaseDetailScreen.renderPlayer(window.app.currentRelease, window.app.currentEpisode);
     } else if (route === "bookmarks" && window.appScreens.bookmarks) {
       window.appScreens.bookmarks();
     } else if (route === "feed" && window.appScreens.feed) {
@@ -140,7 +142,8 @@
     } else if (message.event === "episode") {
       window.releaseDetailScreen?.showEpisode(message.payload || {});
     } else if (message.event === "episode_error") {
-      window.releaseDetailScreen?.showError(message.payload?.message || "Не удалось открыть эпизод.");
+      if (currentRoute === "player") window.releaseDetailScreen?.showPlayerError(message.payload?.message || "Не удалось открыть эпизод.");
+      else window.releaseDetailScreen?.showError(message.payload?.message || "Не удалось открыть эпизод.");
     } else if (message.event === "feature_error") {
       window.releaseDetailScreen?.showError(message.payload?.message || "Ошибка загрузки");
     } else if (message.event === "release_comments_data") {
@@ -197,6 +200,7 @@
     navigate,
     receive,
     currentRelease: null,
+    currentEpisode: null,
     profileData: null,
     profileError: null,
     backFromRelease() {

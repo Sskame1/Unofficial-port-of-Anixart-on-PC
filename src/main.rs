@@ -9,7 +9,7 @@ use app::{
 };
 use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy};
-use tao::window::WindowBuilder;
+use tao::window::{Icon, WindowBuilder};
 use wry::{WebContext, WebView, WebViewBuilder, http::Request};
 
 fn deliver(webview: &WebView, event: &str, payload: serde_json::Value) -> Result<()> {
@@ -29,8 +29,10 @@ fn start() -> Result<()> {
     state.session = features::auth::session::load().ok().flatten();
     let event_loop = EventLoopBuilder::<AppEvent>::with_user_event().build();
     let proxy: EventLoopProxy<AppEvent> = event_loop.create_proxy();
+    let window_icon = load_window_icon()?;
     let window = WindowBuilder::new()
         .with_title("Anixart")
+        .with_window_icon(Some(window_icon))
         .with_min_inner_size(tao::dpi::LogicalSize::new(960.0, 640.0))
         .with_maximized(true)
         .build(&event_loop)
@@ -799,6 +801,43 @@ fn start() -> Result<()> {
             _ => {}
         }
     });
+}
+
+fn load_window_icon() -> Result<Icon> {
+    let decoder = png::Decoder::new(std::io::Cursor::new(include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/app-icon.png"
+    ))));
+    let mut reader = decoder
+        .read_info()
+        .context("could not read application logo")?;
+    let mut buffer = vec![
+        0;
+        reader
+            .output_buffer_size()
+            .context("invalid application logo dimensions")?
+    ];
+    let info = reader
+        .next_frame(&mut buffer)
+        .context("could not decode application logo")?;
+    let pixels = &buffer[..info.buffer_size()];
+    let rgba = match info.color_type {
+        png::ColorType::Rgba => pixels.to_vec(),
+        png::ColorType::Rgb => pixels
+            .chunks_exact(3)
+            .flat_map(|p| [p[0], p[1], p[2], 255])
+            .collect(),
+        png::ColorType::GrayscaleAlpha => pixels
+            .chunks_exact(2)
+            .flat_map(|p| [p[0], p[0], p[0], p[1]])
+            .collect(),
+        png::ColorType::Grayscale => pixels.iter().flat_map(|p| [*p, *p, *p, 255]).collect(),
+        png::ColorType::Indexed => {
+            anyhow::bail!("application logo uses unsupported indexed PNG color")
+        }
+    };
+    Icon::from_rgba(rgba, info.width, info.height)
+        .context("could not create application window icon")
 }
 
 fn main() {
