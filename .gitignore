@@ -1,5 +1,11 @@
-# APK оригинал не добавляется в Git.
+# APK original is not tracked.
 /anixart_v10-5.apk
 
-# Извлечённые ресурсы, инструменты и результаты декомпиляции.
+# Extracted APK resources, tools, and decompilation output.
 /decompile/
+
+# Research notes and design documents are kept locally.
+/docs/
+
+# Rust build output.
+/target/

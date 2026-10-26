@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anixart Video Client</title>
+  <style>
+    :root { color-scheme: dark; font: 15px "Segoe UI", sans-serif; background: #101317; color: #edf1f7; }
+    * { box-sizing: border-box; }
+    body { margin: 0; height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    header { padding: 18px 22px; border-bottom: 1px solid #2b323d; background: #181d24; }
+    h1 { margin: 0 0 14px; font-size: 19px; font-weight: 650; }
+    form { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+    label { display: grid; gap: 5px; color: #aeb9c8; font-size: 12px; }
+    input { width: 120px; padding: 9px 10px; border: 1px solid #3a4553; border-radius: 6px; background: #0e1116; color: inherit; font: inherit; }
+    button { padding: 10px 16px; border: 0; border-radius: 6px; color: white; background: #456ee8; font: inherit; cursor: pointer; }
+    button:hover { background: #5b7ff0; }
+    #status { margin-top: 10px; min-height: 18px; color: #aeb9c8; font-size: 13px; }
+    main { min-height: 0; padding: 16px; }
+    #placeholder { height: 100%; display: grid; place-items: center; padding: 24px; border: 1px dashed #38414d; border-radius: 9px; color: #8995a5; text-align: center; }
+    iframe { display: none; width: 100%; height: 100%; border: 0; border-radius: 9px; background: black; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Anixart Video Client</h1>
+    <form id="episode-form">
+      <label>Release ID<input name="release_id" type="number" min="1" value="19053" required></label>
+      <label>Type ID<input name="type_id" type="number" min="1" value="2" required></label>
+      <label>Source ID<input name="source_id" type="number" min="1" value="7" required></label>
+      <label>Episode position<input name="position" type="number" min="1" value="1" required></label>
+      <button type="submit">Open episode</button>
+    </form>
+    <div id="status" role="status">Ready. Playback is provided by the embedded source player.</div>
+  </header>
+  <main>
+    <div id="placeholder">Enter the Anixart release, type, source, and episode IDs, then open the episode.</div>
+    <iframe id="player" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" title="Episode player"></iframe>
+  </main>
+  <script>
+    const statusNode = document.getElementById('status');
+    const player = document.getElementById('player');
+    const placeholder = document.getElementById('placeholder');
+    document.getElementById('episode-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const data = new FormData(event.currentTarget);
+      window.ipc.postMessage(JSON.stringify({
+        action: 'play',
+        release_id: Number(data.get('release_id')),
+        type_id: Number(data.get('type_id')),
+        source_id: Number(data.get('source_id')),
+        position: Number(data.get('position'))
+      }));
+    });
+    window.onRustMessage = payload => {
+      statusNode.textContent = payload.title + ': ' + payload.message;
+      if (payload.url) {
+        player.src = payload.url;
+        player.style.display = 'block';
+        placeholder.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
