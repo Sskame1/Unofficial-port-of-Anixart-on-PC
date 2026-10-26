@@ -56,9 +56,15 @@ struct EpisodesResponse {
 #[derive(Debug, Deserialize)]
 struct EpisodeItem {
     position: u32,
-    #[serde(default)]
+    #[serde(
+        default,
+        deserialize_with = "crate::features::episodes::string_or_default"
+    )]
     name: String,
-    #[serde(default)]
+    #[serde(
+        default,
+        deserialize_with = "crate::features::episodes::string_or_default"
+    )]
     url: String,
     #[serde(default)]
     iframe: bool,
