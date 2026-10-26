@@ -27,6 +27,23 @@
     showRoute(route);
   }
 
+  function refreshCurrent() {
+    const refreshers = {
+      home: "refreshHome",
+      discover: "refreshDiscover",
+      search: "refreshSearch",
+      filter: "refreshFilter",
+      bookmarks: "refreshBookmarks",
+      feed: "refreshFeed",
+      profile: "refreshProfile",
+      collections: "refreshCollections",
+      schedule: "refreshSchedule"
+    };
+    const refresh = window.appScreens?.[refreshers[currentRoute]];
+    if (refresh) refresh();
+    else navigate(currentRoute);
+  }
+
   function showRoute(route) {
     if (route === "home" && window.appScreens.home) {
       window.appScreens.home();
@@ -194,6 +211,7 @@
       const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
       window.app.setTheme(current === "dark" ? "light" : "dark");
     },
+    refresh: refreshCurrent,
     setStatus(title, message) {
       window.alert(`${title}: ${message}`);
     }
@@ -227,6 +245,18 @@
 
     document.querySelector(".sidebar-footer [data-route=\"settings\"]")?.addEventListener("click", () => navigate("settings"));
     updateThemeControls();
+    document.getElementById("refresh-current")?.addEventListener("click", refreshCurrent);
+    window.addEventListener("keydown", event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "r") { event.preventDefault(); refreshCurrent(); }
+    });
+    let lastAutoRefresh = Date.now();
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "hidden" || Date.now() - lastAutoRefresh < 60_000) return;
+      lastAutoRefresh = Date.now();
+      refreshCurrent();
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
 
     // Показываем начальный маршрут
     navigate("home");

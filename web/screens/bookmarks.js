@@ -51,5 +51,5 @@
     const results = document.getElementById("bookmarks-results");
     if (results) results.innerHTML = `<div class="placeholder"><div class="placeholder-icon">⚠️</div><p>Не удалось загрузить закладки</p><p class="error-message">${String(message || "Ошибка")}</p></div>`;
   }
-  window.appScreens = { ...(window.appScreens || {}), bookmarks: renderBookmarks, showBookmarks: showPage, showBookmarksError: showError };
+  window.appScreens = { ...(window.appScreens || {}), bookmarks: renderBookmarks, refreshBookmarks: requestPage, showBookmarks: showPage, showBookmarksError: showError };
 })();

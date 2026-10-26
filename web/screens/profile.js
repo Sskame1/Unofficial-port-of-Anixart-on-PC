@@ -53,5 +53,8 @@
     const content = document.getElementById("friends-content");
     if (content) content.innerHTML = `<p class="placeholder">Не удалось загрузить друзей: ${escape(message)}</p>`;
   }
-  window.appScreens = { ...(window.appScreens || {}), profile: renderProfile, showFriends, showFriendsError };
+  window.appScreens = { ...(window.appScreens || {}), profile: renderProfile, refreshProfile: () => {
+    if (window.appStorage?.get("anixart_token")) window.appIpc.send({ action: "refresh_profile" });
+    else renderProfile();
+  }, showFriends, showFriendsError };
 })();

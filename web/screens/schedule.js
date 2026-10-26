@@ -92,6 +92,7 @@
   window.appScreens = {
     ...(window.appScreens || {}),
     schedule: renderSchedule,
+    refreshSchedule: () => window.appIpc.send({ action: "load_schedule" }),
     showSchedule,
     showScheduleError: showError
   };

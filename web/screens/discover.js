@@ -148,6 +148,7 @@
   window.appScreens = {
     ...(window.appScreens || {}),
     discover: renderDiscover,
+    refreshDiscover: loadContent,
     showDiscoverPage: showPage,
     showDiscoverError: showError
   };

@@ -2,6 +2,7 @@
   let kind = "popular";
   let page = 1;
   let totalPages = 1;
+  let currentCollectionId = null;
 
   const tabs = [
     ["popular", "Популярные"],
@@ -34,6 +35,7 @@
     root.querySelector(".settings-back").addEventListener("click", () => window.app.navigate("discover"));
     root.querySelectorAll(".collection-tabs button").forEach(button => button.addEventListener("click", () => {
       kind = button.dataset.kind;
+      currentCollectionId = null;
       page = 1;
       root.querySelectorAll(".collection-tabs button").forEach(tab => tab.classList.toggle("is-active", tab === button));
       loadCollections();
@@ -48,6 +50,13 @@
     if (root) root.innerHTML = '<div class="placeholder"><div class="placeholder-icon">⏳</div><p>Загружаем коллекции…</p></div>';
     const requestId = (window.appCollectionRequestId = (window.appCollectionRequestId || 0) + 1);
     window.appIpc.send({ action: "load_collections", kind, page, request_id: requestId });
+  }
+
+  function loadCurrentCollection() {
+    const id = currentCollectionId;
+    if (!id) return loadCollections();
+    const requestId = (window.appCollectionRequestId = (window.appCollectionRequestId || 0) + 1);
+    window.appIpc.send({ action: "open_collection", collection_id: id, request_id: requestId });
   }
 
   function showCollections(response) {
@@ -96,13 +105,14 @@
     const collection = response.collection;
     const root = document.getElementById("collections-results");
     if (!root || !collection) return showError("Коллекция не найдена");
+    currentCollectionId = Number(collection.id) || null;
     const created = Number(collection.creation_date) > 0 ? new Date(Number(collection.creation_date) * 1000).toLocaleDateString("ru-RU") : "";
     root.innerHTML = `<article class="collection-detail"><button class="btn btn-secondary" id="collection-back" type="button">← Все коллекции</button><div class="collection-detail-hero">${collection.image ? `<img src="${escape(collection.image)}" alt="" loading="lazy">` : ""}<div><h2>${escape(collection.title)}</h2><p>${escape(collection.description || "Нет описания")}</p><small>♥ <span id="collection-likes">${Number(collection.favorites_count) || 0}</span> · 💬 ${Number(collection.comment_count) || 0}${created ? ` · Создана ${created}` : ""}</small><button class="btn btn-secondary collection-like" id="collection-like" type="button">${collection.is_favorite ? "♥ В закладках" : "♡ Добавить в закладки"}</button></div></div><h3 class="collection-releases-title">Релизы в коллекции</h3><div id="collection-releases" class="release-grid"></div><section class="collection-comments"><h3>Комментарии</h3><div id="collection-comments-list"></div></section></article>`;
     const releases = response.releases || [];
     const releasesRoot = root.querySelector("#collection-releases");
     if (!releases.length) releasesRoot.innerHTML = '<p class="placeholder">В коллекции пока нет релизов.</p>';
     else releasesRoot.replaceChildren(...releases.map(release => window.releaseCard.render(release)));
-    root.querySelector("#collection-back")?.addEventListener("click", loadCollections);
+    root.querySelector("#collection-back")?.addEventListener("click", () => { currentCollectionId = null; loadCollections(); });
     const likeButton = root.querySelector("#collection-like");
     likeButton?.addEventListener("click", () => {
       const enabled = likeButton.dataset.enabled !== "true";
@@ -130,5 +140,5 @@
     window.app.setStatus("Коллекции", message || "Не удалось изменить закладку");
   }
 
-  window.appScreens = { ...(window.appScreens || {}), collections: renderCollections, showCollections, showCollectionsError: showError, showCollection, collectionFavoriteDone: favoriteDone, collectionFavoriteError: favoriteError };
+  window.appScreens = { ...(window.appScreens || {}), collections: renderCollections, refreshCollections: loadCurrentCollection, showCollections, showCollectionsError: showError, showCollection, collectionFavoriteDone: favoriteDone, collectionFavoriteError: favoriteError };
 })();

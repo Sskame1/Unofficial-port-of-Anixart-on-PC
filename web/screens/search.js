@@ -29,6 +29,7 @@
 
     const input = root.querySelector("#search-input");
     const btn = root.querySelector("#search-btn");
+    input.value = searchQuery;
 
     const performSearch = () => {
       searchQuery = input.value.trim();
@@ -85,6 +86,12 @@
   window.appScreens = {
     ...(window.appScreens || {}),
     search: renderSearch,
+    refreshSearch: () => {
+      if (!searchQuery) return;
+      const results = document.getElementById("search-results");
+      if (results) results.innerHTML = '<div class="placeholder"><div class="placeholder-icon">🔍</div><p>Обновляем поиск…</p></div>';
+      window.appIpc.send({ action: "search_releases", query: searchQuery });
+    },
     showSearchResults: showResults,
     showSearchError: showError
   };

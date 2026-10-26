@@ -57,6 +57,9 @@ body {
   min-height: 100vh;
   padding-left: var(--sidebar-width);
 }
+.app-refresh-button { position: fixed; top: 18px; right: 22px; z-index: 120; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; box-shadow: var(--shadow); }
+.app-refresh-button:hover { color: var(--purple-accent, var(--accent)); border-color: var(--purple-accent, var(--accent)); }
+.app-refresh-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Sidebar Navigation */
 .sidebar {

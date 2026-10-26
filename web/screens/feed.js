@@ -105,5 +105,8 @@
     if (dialog) dialog.innerHTML = `<header><h2>Публикация</h2><button type="button" id="article-close">×</button></header><p>Не удалось открыть публикацию: ${escape(message)}</p>`;
     dialog?.querySelector("#article-close")?.addEventListener("click", () => document.getElementById("article-modal")?.remove());
   }
-  window.appScreens = { ...(window.appScreens || {}), feed: renderFeed, showFeed, showFeedError: showError, showArticle, showArticleError };
+  window.appScreens = { ...(window.appScreens || {}), feed: renderFeed, refreshFeed: () => {
+    const requestId = (window.appFeedRequestId = (window.appFeedRequestId || 0) + 1);
+    window.appIpc.send({ action: "load_feed", page: 1, request_id: requestId });
+  }, showFeed, showFeedError: showError, showArticle, showArticleError };
 })();

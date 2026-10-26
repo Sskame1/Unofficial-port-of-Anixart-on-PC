@@ -4,6 +4,7 @@ use std::{env, fs, path::PathBuf, process::Command};
 fn main() {
     let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
     let index_path = root.join("web/index.html");
+    let filter_options_path = root.join("web/data/filter-options.json");
     let style_paths = ["web/styles/desktop.css"];
     let script_paths = [
         "web/services/ipc.js",
@@ -28,6 +29,13 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", index_path.display());
     let mut html = fs::read_to_string(&index_path).expect("read web/index.html");
+    println!("cargo:rerun-if-changed={}", filter_options_path.display());
+    let filter_options = fs::read_to_string(filter_options_path).expect("read filter options");
+    html = replace_once(
+        &html,
+        "<!-- FILTER_OPTIONS -->",
+        &format!("<script>window.appFilterOptions={filter_options};</script>"),
+    );
 
     let styles = style_paths
         .iter()

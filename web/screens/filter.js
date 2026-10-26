@@ -3,6 +3,10 @@
   let lastFilter = null;
   let selectedGenres = [];
 
+  const filterOptions = window.appFilterOptions || {};
+  const optionItems = (items, fallback) => (Array.isArray(items) && items.length ? items : fallback);
+  const genreOptions = optionItems(filterOptions.genres, ["драма", "комедия", "повседневность", "приключения", "романтика", "фэнтези", "экшен"]);
+
   function renderFilter() {
     const root = document.getElementById("screen-content");
     root.innerHTML = `
@@ -27,8 +31,7 @@
             <span><small>Категория</small></span>
             <select id="filter-category">
               <option value="">Любая</option>
-              <option value="1">Аниме</option>
-              <option value="2">Дорама</option>
+              ${(filterOptions.categories || [{value: 1, label: "Сериал"}, {value: 2, label: "Полнометражный фильм"}, {value: 3, label: "OVA"}, {value: 4, label: "Дорама"}]).map(item => `<option value="${item.value}">${item.label}</option>`).join("")}
             </select>
           </label>
 
@@ -47,7 +50,7 @@
             <input id="filter-studio" type="text" placeholder="Любая">
           </label>
 
-          <label class="filter-field"><span><small>Источник</small></span><select id="filter-source"><option value="">Любой</option><option value="0">Kodik</option><option value="1">Libria</option><option value="2">Sibnet</option></select></label>
+          <label class="filter-field"><span><small>Первоисточник</small></span><select id="filter-source"><option value="">Неважно</option>${(filterOptions.sources || []).map(item => `<option value="${item}">${item}</option>`).join("")}</select></label>
 
           <label class="filter-field">
             <span><small>Эпизодов от</small></span>
@@ -59,7 +62,7 @@
             <input id="filter-episodes-to" type="number" min="0" placeholder="Любое">
           </label>
 
-          <label class="filter-field"><span><small>Страна</small></span><select id="filter-country"><option value="">Любая</option><option value="Япония">Япония</option><option value="Китай">Китай</option><option value="Южная Корея">Южная Корея</option><option value="США">США</option><option value="Россия">Россия</option></select></label>
+          <label class="filter-field"><span><small>Страна</small></span><select id="filter-country"><option value="">Неважно</option>${(filterOptions.countries || ["Япония", "Китай", "Южная Корея"]).map(item => `<option value="${item}">${item}</option>`).join("")}</select></label>
 
           <label class="filter-field">
             <span><small>Сезон</small></span>
@@ -82,16 +85,12 @@
             <input id="filter-duration-to" type="number" min="0" placeholder="Любая">
           </label>
 
-          <div class="filter-field filter-genre-field"><span><small>Жанры</small></span><div id="filter-genres" class="filter-chip-list">${["Экшен","Комедия","Драма","Фэнтези","Романтика","Приключения","Фантастика","Ужасы","Школа","Повседневность"].map(genre => `<button type="button" class="filter-chip" data-genre="${genre}">${genre}</button>`).join("")}</div></div>
+          <div class="filter-field filter-genre-field"><span><small>Жанры</small></span><div id="filter-genres" class="filter-chip-list">${genreOptions.map(genre => `<button type="button" class="filter-chip" data-genre="${genre}">${genre}</button>`).join("")}</div><select id="filter-genres-mode" aria-label="Режим жанров"><option value="0">Все выбранные</option><option value="1">Хотя бы один</option><option value="2">Без выбранных</option></select></div>
 
           <label class="filter-field">
             <span><small>Возрастной рейтинг</small></span>
             <select id="filter-age-rating" multiple size="3">
-              <option value="1">G - Все возрасты</option>
-              <option value="2">PG - Дети</option>
-              <option value="3">PG-13 - Подростки</option>
-              <option value="4">R - 17+</option>
-              <option value="5">R+ - Насилие</option>
+              ${(filterOptions.ageRatings || [{label: "0+", value: 1}, {label: "6+", value: 2}, {label: "12+", value: 3}, {label: "16+", value: 4}, {label: "18+", value: 5}]).map(item => `<option value="${item.value}">${item.label}</option>`).join("")}
             </select>
           </label>
 
@@ -158,6 +157,7 @@
     document.querySelectorAll("#filter-genres .filter-chip").forEach(button => button.classList.remove("is-selected"));
     document.getElementById("filter-age-rating").selectedIndex = -1;
     document.getElementById("filter-sort").value = "0";
+    document.getElementById("filter-genres-mode").value = "0";
     document.getElementById("filter-results").replaceChildren();
     document.getElementById("filter-pagination").style.display = "none";
     currentPage = 1;
@@ -215,8 +215,9 @@
       types: [],
       profile_list_exclusions: [],
       is_genres_exclude_mode_enabled: false,
-      genres_mode: null
+      genres_mode: Number(document.getElementById("filter-genres-mode").value)
     };
+    lastFilter.is_genres_exclude_mode_enabled = lastFilter.genres_mode === 2;
 
     const results = document.getElementById("filter-results");
     results.innerHTML = '<p class="placeholder">Применяем фильтр…</p>';
@@ -264,6 +265,7 @@
   window.appScreens = {
     ...(window.appScreens || {}),
     filter: renderFilter,
+    refreshFilter: () => { if (lastFilter) submitFilter(); },
     showFilterResults: showResults,
     showFilterError: showError
   };

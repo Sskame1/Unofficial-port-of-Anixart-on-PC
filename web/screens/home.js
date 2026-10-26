@@ -14,14 +14,14 @@
   let page = 1;
 
   const tabFilters = {
-    anime: { category_id: 1 },
-    donghua: { category_id: 2 },
+    anime: { country: "Япония" },
+    donghua: { country: "Китай" },
     latest: { sort: 0 },
     ongoing: { status_id: 2 },
     announced: { status_id: 3 },
     completed: { status_id: 1 },
-    movies: { types: [2] },
-    ova: { category_id: 1, types: [3] }
+    movies: { category_id: 2 },
+    ova: { category_id: 3 }
   };
 
   function renderHome() {
@@ -98,5 +98,5 @@
     results.replaceChildren(...content.map(release => window.releaseCard.render(release)));
   }
 
-  window.appScreens = { ...(window.appScreens || {}), home: renderHome, showHomeResults: showResults };
+  window.appScreens = { ...(window.appScreens || {}), home: renderHome, refreshHome: loadContent, showHomeResults: showResults };
 })();
