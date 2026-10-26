@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 description = "A small Windows client for opening Anixart episodes"
+build = "build.rs"
 
 [dependencies]
 anyhow = "1"

@@ -1,0 +1,60 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ReleaseCard {
+    pub id: u64,
+    #[serde(default)]
+    pub title_ru: Option<String>,
+    #[serde(default)]
+    pub title_original: Option<String>,
+    #[serde(default)]
+    pub image: Option<String>,
+    #[serde(default)]
+    pub year: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub grade: Option<f64>,
+    #[serde(default)]
+    pub genres: Option<String>,
+    #[serde(default)]
+    pub episodes_released: Option<u32>,
+    #[serde(default)]
+    pub episodes_total: Option<u32>,
+    #[serde(default)]
+    pub category: Option<ReleaseCategory>,
+    #[serde(default)]
+    pub status: Option<ReleaseStatus>,
+    #[serde(default)]
+    pub age_rating: Option<u8>,
+    #[serde(default)]
+    pub source: Option<String>,
+    #[serde(default)]
+    pub country: Option<String>,
+    #[serde(default)]
+    pub studio: Option<String>,
+    #[serde(default)]
+    pub duration: Option<u32>,
+    #[serde(default)]
+    pub season: Option<u32>,
+    #[serde(default)]
+    pub rating: Option<u64>,
+    #[serde(default)]
+    pub is_play_disabled: Option<bool>,
+    #[serde(default)]
+    pub is_view_blocked: Option<bool>,
+    #[serde(default)]
+    pub vote_count: Option<u64>,
+    #[serde(default)]
+    pub favorites_count: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ReleaseCategory {
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ReleaseStatus {
+    pub name: Option<String>,
+}

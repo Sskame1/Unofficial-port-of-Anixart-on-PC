@@ -1,0 +1,29 @@
+.release-card { display: grid; gap: 10px; margin: 0 0 14px; }
+.release-card .panel-title { margin: 0; }
+.release-poster-frame { display: grid; place-items: center; width: 100%; aspect-ratio: 2 / 3; max-height: 520px; overflow: hidden; border-radius: 10px; background: var(--color-surface-raised); }
+.release-poster { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.release-poster-unavailable { color: var(--color-muted); font-size: 13px; }
+.release-meta, .release-id { margin: 0; font-size: 13px; }
+.release-description { margin: 0; color: var(--color-text); line-height: 1.45; white-space: pre-line; }
+.discover-result { min-height: 100px; }
+#discover-random { margin: 0 0 16px; }
+.search-form { margin: 0 0 18px; }
+.search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 8px; }
+.search-row input { min-width: 0; padding: 10px 12px; border: 1px solid #39363e; border-radius: 10px; outline: none; background: #0b0b0d; color: var(--color-text); }
+.search-row input:focus { border-color: var(--color-accent); }
+.search-results { display: grid; gap: 12px; }
+.release-card-compact { grid-template-columns: 88px minmax(0, 1fr); align-items: start; gap: 7px 12px; }
+.release-card-compact .panel-title { grid-column: 2; grid-row: 1; }
+.release-card-compact .release-poster-frame { grid-column: 1; grid-row: 1 / span 4; width: 88px; height: 132px; }
+.release-card-compact .release-meta { grid-column: 2; grid-row: 2; }
+.release-card-compact .release-description { grid-column: 2; grid-row: 3; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.release-card-compact .release-id { grid-column: 2; grid-row: 4; }
+.release-card[role="button"] { cursor: pointer; }
+.release-card[role="button"]:hover { border-color: #514b60; }
+.release-detail .release-card { cursor: default; }
+.back-button { margin-bottom: 12px; }
+.episode-picker { display: grid; gap: 12px; }
+.episode-picker select { width: 100%; padding: 10px 12px; border: 1px solid #39363e; border-radius: 10px; background: #0b0b0d; color: var(--color-text); }
+.episode-list { display: grid; gap: 8px; }
+.episode-item { min-height: 48px; padding: 10px 12px; border: 1px solid var(--color-divider); border-radius: 10px; background: var(--color-surface-raised); text-align: left; cursor: pointer; }
+.episode-item:hover { border-color: var(--color-accent); }
