@@ -10,7 +10,7 @@ use app::{
 use tao::event::{Event, StartCause, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy};
 use tao::window::WindowBuilder;
-use wry::{WebView, WebViewBuilder, http::Request};
+use wry::{WebContext, WebView, WebViewBuilder, http::Request};
 
 fn deliver(webview: &WebView, event: &str, payload: serde_json::Value) -> Result<()> {
     let message = serde_json::json!({ "event": event, "payload": payload });
@@ -37,7 +37,27 @@ fn start() -> Result<()> {
         .context("could not create the application window")?;
 
     let ipc_proxy = proxy.clone();
+    let preferred_webview_data = std::env::var_os("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir)
+        .join("AnixartWindowsClient")
+        .join("WebView2");
+    let webview_data = if std::fs::create_dir_all(&preferred_webview_data).is_ok() {
+        preferred_webview_data
+    } else {
+        let executable_dir = std::env::current_exe()
+            .ok()
+            .and_then(|path| path.parent().map(std::path::Path::to_path_buf))
+            .unwrap_or_else(std::env::temp_dir);
+        let fallback = executable_dir.join("AnixartWindowsClient.WebView2");
+        std::fs::create_dir_all(&fallback).context(
+            "could not create WebView2 profile directory in LocalAppData or next to the executable",
+        )?;
+        fallback
+    };
+    let mut web_context = WebContext::new(Some(webview_data));
     let webview = WebViewBuilder::new(&window)
+        .with_web_context(&mut web_context)
         .with_html(include_str!(concat!(env!("OUT_DIR"), "/index.html")))
         .with_ipc_handler(move |request: Request<String>| {
             let result = serde_json::from_str::<AppCommand>(request.body())
