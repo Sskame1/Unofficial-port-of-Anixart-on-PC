@@ -43,6 +43,7 @@
     } else if (route === "feed" && window.appScreens.feed) {
       window.appScreens.feed();
     } else if (route === "profile" && window.appScreens.profile) {
+      if (window.appStorage?.get("anixart_token")) window.appIpc.send({ action: "refresh_profile" });
       window.appScreens.profile();
     } else if (route === "settings" && window.appScreens.settings) {
       window.appScreens.settings();
@@ -165,6 +166,10 @@
       window.app.profileError = null;
       navigate("signin");
     }
+    else if (message.event === "collection_favorite_done") window.appScreens.collectionFavoriteDone?.(message.payload || {});
+    else if (message.event === "collection_favorite_error") window.appScreens.collectionFavoriteError?.(message.payload?.message || "Не удалось изменить закладку");
+    else if (message.event === "release_list_done") window.releaseDetailScreen?.listDone();
+    else if (message.event === "release_list_error") window.releaseDetailScreen?.listError(message.payload?.message);
   }
 
   window.app = {

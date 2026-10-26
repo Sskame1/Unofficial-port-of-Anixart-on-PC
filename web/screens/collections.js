@@ -96,13 +96,39 @@
     const collection = response.collection;
     const root = document.getElementById("collections-results");
     if (!root || !collection) return showError("Коллекция не найдена");
-    root.innerHTML = `<article class="collection-detail"><button class="btn btn-secondary" id="collection-back" type="button">← Все коллекции</button><div class="collection-detail-hero">${collection.image ? `<img src="${escape(collection.image)}" alt="" loading="lazy">` : ""}<div><h2>${escape(collection.title)}</h2><p>${escape(collection.description || "Нет описания")}</p><small>♥ ${Number(collection.favorites_count) || 0} · 💬 ${Number(collection.comment_count) || 0}</small></div></div><h3 class="collection-releases-title">Релизы в коллекции</h3><div id="collection-releases" class="release-grid"></div></article>`;
+    const created = Number(collection.creation_date) > 0 ? new Date(Number(collection.creation_date) * 1000).toLocaleDateString("ru-RU") : "";
+    root.innerHTML = `<article class="collection-detail"><button class="btn btn-secondary" id="collection-back" type="button">← Все коллекции</button><div class="collection-detail-hero">${collection.image ? `<img src="${escape(collection.image)}" alt="" loading="lazy">` : ""}<div><h2>${escape(collection.title)}</h2><p>${escape(collection.description || "Нет описания")}</p><small>♥ <span id="collection-likes">${Number(collection.favorites_count) || 0}</span> · 💬 ${Number(collection.comment_count) || 0}${created ? ` · Создана ${created}` : ""}</small><button class="btn btn-secondary collection-like" id="collection-like" type="button">${collection.is_favorite ? "♥ В закладках" : "♡ Добавить в закладки"}</button></div></div><h3 class="collection-releases-title">Релизы в коллекции</h3><div id="collection-releases" class="release-grid"></div><section class="collection-comments"><h3>Комментарии</h3><div id="collection-comments-list"></div></section></article>`;
     const releases = response.releases || [];
     const releasesRoot = root.querySelector("#collection-releases");
     if (!releases.length) releasesRoot.innerHTML = '<p class="placeholder">В коллекции пока нет релизов.</p>';
     else releasesRoot.replaceChildren(...releases.map(release => window.releaseCard.render(release)));
     root.querySelector("#collection-back")?.addEventListener("click", loadCollections);
+    const likeButton = root.querySelector("#collection-like");
+    likeButton?.addEventListener("click", () => {
+      const enabled = likeButton.dataset.enabled !== "true";
+      likeButton.disabled = true;
+      window.appIpc.send({ action: "toggle_collection_favorite", collection_id: collection.id, enabled });
+      likeButton.dataset.pending = String(enabled);
+    });
+    const comments = response.comments || [];
+    const commentsRoot = root.querySelector("#collection-comments-list");
+    commentsRoot.innerHTML = comments.length ? comments.map(comment => `<article class="collection-comment"><strong>${escape(comment.profile?.login || "Пользователь")}</strong><p>${escape(comment.message)}</p>${Number(comment.creation_date) > 0 ? `<small>${new Date(Number(comment.creation_date) * 1000).toLocaleString("ru-RU")}</small>` : ""}</article>`).join("") : '<p class="placeholder">Комментариев пока нет.</p>';
+    likeButton.dataset.enabled = String(Boolean(collection.is_favorite));
   }
 
-  window.appScreens = { ...(window.appScreens || {}), collections: renderCollections, showCollections, showCollectionsError: showError, showCollection };
+  function favoriteDone(payload) {
+    const button = document.getElementById("collection-like");
+    if (!button) return;
+    button.disabled = false;
+    const enabled = Boolean(payload.enabled);
+    button.dataset.enabled = String(enabled);
+    button.textContent = enabled ? "♥ В закладках" : "♡ Добавить в закладки";
+  }
+  function favoriteError(message) {
+    const button = document.getElementById("collection-like");
+    if (button) button.disabled = false;
+    window.app.setStatus("Коллекции", message || "Не удалось изменить закладку");
+  }
+
+  window.appScreens = { ...(window.appScreens || {}), collections: renderCollections, showCollections, showCollectionsError: showError, showCollection, collectionFavoriteDone: favoriteDone, collectionFavoriteError: favoriteError };
 })();

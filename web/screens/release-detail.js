@@ -72,15 +72,32 @@
         const section = document.getElementById("release-comments");
         section?.scrollIntoView({ behavior: "smooth", block: "start" });
         document.getElementById("release-comments-load")?.click();
-      } else window.app.auth("signin");
+      } else if (button.dataset.action === "status") showListPicker(release);
+      else window.app.auth("signin");
     }));
     document.querySelectorAll(".release-vote-actions button").forEach(button => button.addEventListener("click", () => window.app.auth("signin")));
   }
+  function showListPicker(release) {
+    const options = [[1,"Смотрю"],[2,"В планах"],[3,"Просмотрено"],[4,"Отложено"],[5,"Брошено"]];
+    const overlay = document.createElement("div"); overlay.className = "list-picker-overlay";
+    overlay.innerHTML = `<section class="list-picker"><header><strong>Добавить в список</strong><button type="button" aria-label="Закрыть">×</button></header>${options.map(([id,label])=>`<button type="button" data-list="${id}">${label}</button>`).join("")}</section>`;
+    overlay.querySelector("header button").addEventListener("click",()=>overlay.remove());
+    overlay.addEventListener("click",event=>{ if(event.target===overlay) overlay.remove(); });
+    overlay.querySelectorAll("[data-list]").forEach(button=>button.addEventListener("click",()=>{
+      const listType = Number(button.dataset.list);
+      if (!window.appStorage?.get("anixart_token")) { overlay.remove(); window.app.auth("signin"); return; }
+      button.disabled = true; button.textContent = "Сохраняем…";
+      window.appIpc.send({ action: "add_release_to_list", release_id: release.id, list_type: listType });
+    }));
+    document.body.append(overlay);
+  }
+  function listDone() { document.querySelector(".list-picker-overlay")?.remove(); window.app.setStatus("Список", "Релиз добавлен в ваш список."); }
+  function listError(message) { window.app.setStatus("Список", message || "Не удалось сохранить релиз."); }
   function renderRelated(items) {
     const row = document.getElementById("related-releases");
     if (!row) return;
     if (!items.length) { row.innerHTML = '<p class="placeholder">Похожие релизы не указаны.</p>'; return; }
-    row.replaceChildren(...items.map(item => window.releaseCard.render(item)));
+    row.replaceChildren(...items.map(item => { const card = window.releaseCard.render(item); card.classList.add("related-release-card"); return card; }));
   }
   function renderScreenshots(images) {
     const row = document.getElementById("release-screenshots");
@@ -123,5 +140,5 @@
     root.innerHTML = items.length ? items.map(item => `<article class="release-comment"><strong>${escapeHtml(item.profile?.login || "Пользователь")}</strong><p>${escapeHtml(item.message || "")}</p></article>`).join("") : '<p class="placeholder">Отзывов пока нет.</p>';
   }
   function showCommentsError(message) { const root = document.getElementById("release-comments-list"); if (root) root.innerHTML = `<p class="placeholder">Не удалось загрузить отзывы: ${escapeHtml(message)}</p>`; }
-  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, showTypes, showSources, showEpisodes, showError, showComments, showCommentsError };
+  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, showTypes, showSources, showEpisodes, showError, showComments, showCommentsError, listDone, listError };
 })();

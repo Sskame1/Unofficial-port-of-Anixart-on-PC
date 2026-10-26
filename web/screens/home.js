@@ -21,7 +21,7 @@
     announced: { status_id: 3 },
     completed: { status_id: 1 },
     movies: { types: [2] },
-    ova: { types: [3] }
+    ova: { category_id: 1, types: [3] }
   };
 
   function renderHome() {

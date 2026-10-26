@@ -1,6 +1,7 @@
 (() => {
   let currentPage = 1;
   let lastFilter = null;
+  let selectedGenres = [];
 
   function renderFilter() {
     const root = document.getElementById("screen-content");
@@ -46,10 +47,7 @@
             <input id="filter-studio" type="text" placeholder="Любая">
           </label>
 
-          <label class="filter-field">
-            <span><small>Источник</small></span>
-            <input id="filter-source" type="text" placeholder="Любой">
-          </label>
+          <label class="filter-field"><span><small>Источник</small></span><select id="filter-source"><option value="">Любой</option><option value="0">Kodik</option><option value="1">Libria</option><option value="2">Sibnet</option></select></label>
 
           <label class="filter-field">
             <span><small>Эпизодов от</small></span>
@@ -61,10 +59,7 @@
             <input id="filter-episodes-to" type="number" min="0" placeholder="Любое">
           </label>
 
-          <label class="filter-field">
-            <span><small>Страна</small></span>
-            <input id="filter-country" type="text" placeholder="Любая">
-          </label>
+          <label class="filter-field"><span><small>Страна</small></span><select id="filter-country"><option value="">Любая</option><option value="Япония">Япония</option><option value="Китай">Китай</option><option value="Южная Корея">Южная Корея</option><option value="США">США</option><option value="Россия">Россия</option></select></label>
 
           <label class="filter-field">
             <span><small>Сезон</small></span>
@@ -87,10 +82,7 @@
             <input id="filter-duration-to" type="number" min="0" placeholder="Любая">
           </label>
 
-          <label class="filter-field">
-            <span><small>Жанры (через запятую)</small></span>
-            <input id="filter-genres" type="text" placeholder="Например: боевик, комедия">
-          </label>
+          <div class="filter-field filter-genre-field"><span><small>Жанры</small></span><div id="filter-genres" class="filter-chip-list">${["Экшен","Комедия","Драма","Фэнтези","Романтика","Приключения","Фантастика","Ужасы","Школа","Повседневность"].map(genre => `<button type="button" class="filter-chip" data-genre="${genre}">${genre}</button>`).join("")}</div></div>
 
           <label class="filter-field">
             <span><small>Возрастной рейтинг</small></span>
@@ -100,7 +92,6 @@
               <option value="3">PG-13 - Подростки</option>
               <option value="4">R - 17+</option>
               <option value="5">R+ - Насилие</option>
-              <option value="6">Rx - Хентай</option>
             </select>
           </label>
 
@@ -163,7 +154,8 @@
     document.getElementById("filter-season").value = "";
     document.getElementById("filter-duration-from").value = "";
     document.getElementById("filter-duration-to").value = "";
-    document.getElementById("filter-genres").value = "";
+    selectedGenres = [];
+    document.querySelectorAll("#filter-genres .filter-chip").forEach(button => button.classList.remove("is-selected"));
     document.getElementById("filter-age-rating").selectedIndex = -1;
     document.getElementById("filter-sort").value = "0";
     document.getElementById("filter-results").replaceChildren();
@@ -186,8 +178,7 @@
       return;
     }
 
-    const genresInput = document.getElementById("filter-genres").value.trim();
-    const genres = genresInput ? genresInput.split(",").map(g => g.trim()).filter(g => g) : [];
+    const genres = [...selectedGenres];
 
     const ageRatingSelect = document.getElementById("filter-age-rating");
     const ageRatings = Array.from(ageRatingSelect.selectedOptions).map(opt =>
@@ -197,10 +188,10 @@
     const category = document.getElementById("filter-category").value;
     const status = document.getElementById("filter-status").value;
     const studio = document.getElementById("filter-studio").value.trim();
-    const source = document.getElementById("filter-source").value.trim();
+    const source = document.getElementById("filter-source").value;
     const episodesFrom = Number(document.getElementById("filter-episodes-from").value) || null;
     const episodesTo = Number(document.getElementById("filter-episodes-to").value) || null;
-    const country = document.getElementById("filter-country").value.trim();
+    const country = document.getElementById("filter-country").value;
     const season = document.getElementById("filter-season").value;
     const durationFrom = Number(document.getElementById("filter-duration-from").value) || null;
     const durationTo = Number(document.getElementById("filter-duration-to").value) || null;
@@ -276,4 +267,11 @@
     showFilterResults: showResults,
     showFilterError: showError
   };
+  document.addEventListener("click", event => {
+    const button = event.target.closest?.("#filter-genres .filter-chip");
+    if (!button) return;
+    const genre = button.dataset.genre;
+    selectedGenres = selectedGenres.includes(genre) ? selectedGenres.filter(item => item !== genre) : [...selectedGenres, genre];
+    button.classList.toggle("is-selected", selectedGenres.includes(genre));
+  });
 })();

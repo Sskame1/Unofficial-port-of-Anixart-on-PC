@@ -30,8 +30,13 @@ impl ApiClient {
         }
 
         let http = builder.build().map_err(ApiError::Transport)?;
-        let seed = Url::parse(config::API_SEED)
-            .map_err(|error| ApiError::InvalidUrl(error.to_string()))?;
+        let seed_value =
+            std::env::var("ANIXART_API_URL").unwrap_or_else(|_| config::API_SEED.to_owned());
+        let mut seed =
+            Url::parse(&seed_value).map_err(|error| ApiError::InvalidUrl(error.to_string()))?;
+        if !seed.path().ends_with('/') {
+            seed.set_path(&format!("{}/", seed.path()));
+        }
         Ok(Self { http, seed })
     }
 

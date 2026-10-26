@@ -60,6 +60,7 @@ fn main() {
     );
 
     let icon = [
+        ("web/assets/logo.png", "image/png"),
         ("public/icon.png", "image/png"),
         ("public/icon", "image/png"),
         ("public/icon.ico", "image/x-icon"),

@@ -72,4 +72,19 @@ pub struct CollectionDetails {
     pub collection: Option<CollectionCard>,
     #[serde(default)]
     pub releases: Vec<ReleaseCard>,
+    #[serde(default)]
+    pub comments: Vec<CollectionComment>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CollectionComment {
+    pub id: u64,
+    #[serde(default)]
+    pub message: String,
+    #[serde(default)]
+    pub creation_date: i64,
+    #[serde(default)]
+    pub profile: Option<CollectionCreator>,
+    #[serde(default)]
+    pub vote: i32,
 }

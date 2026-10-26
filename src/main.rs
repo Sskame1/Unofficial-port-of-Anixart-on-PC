@@ -294,6 +294,30 @@ fn start() -> Result<()> {
                     let _ = proxy.send_event(AppEvent::CollectionResolved { request_id, result });
                 });
             }
+            Event::UserEvent(AppEvent::ToggleCollectionFavorite { collection_id, enabled }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result = features::account::api::toggle_collection_favorite(&api, &session.token, collection_id, enabled)
+                            .map(|_| enabled).map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::CollectionFavoriteResolved(result));
+                    });
+                } else {
+                    let _ = deliver(&webview, "collection_favorite_error", serde_json::json!({"message": "Войдите, чтобы добавить коллекцию в закладки."}));
+                }
+            }
+            Event::UserEvent(AppEvent::AddReleaseToList { release_id, list_type }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone(); let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result = features::account::api::add_release_to_list(&api, &session.token, release_id, list_type).map_err(|e| e.to_string());
+                        let _ = proxy.send_event(AppEvent::ReleaseListResolved(result));
+                    });
+                } else {
+                    let _ = deliver(&webview, "release_list_error", serde_json::json!({"message":"Войдите в аккаунт, чтобы сохранить релиз."}));
+                }
+            }
             Event::UserEvent(AppEvent::LoadFriends { page }) => {
                 if let Some(session) = state.session.clone() {
                     let api = state.api.clone();
@@ -310,6 +334,15 @@ fn start() -> Result<()> {
                         "friends_error",
                         serde_json::json!({"message": "Войдите в аккаунт для просмотра друзей."}),
                     );
+                }
+            }
+            Event::UserEvent(AppEvent::RefreshProfile) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone(); let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result = features::profile::api::profile(&api, session.id, &session.token).map_err(|e| e.to_string());
+                        let _ = proxy.send_event(AppEvent::ProfileResolved(result));
+                    });
                 }
             }
             Event::UserEvent(AppEvent::LoadReleaseComments { release_id, page }) => {
@@ -525,6 +558,14 @@ fn start() -> Result<()> {
                     serde_json::json!({ "request_id": request_id, "message": error }),
                 );
             }
+            Event::UserEvent(AppEvent::CollectionFavoriteResolved(Ok(enabled))) => {
+                let _ = deliver(&webview, "collection_favorite_done", serde_json::json!({"enabled": enabled}));
+            }
+            Event::UserEvent(AppEvent::CollectionFavoriteResolved(Err(error))) => {
+                let _ = deliver(&webview, "collection_favorite_error", serde_json::json!({"message": error}));
+            }
+            Event::UserEvent(AppEvent::ReleaseListResolved(Ok(()))) => { let _ = deliver(&webview, "release_list_done", serde_json::json!({})); }
+            Event::UserEvent(AppEvent::ReleaseListResolved(Err(error))) => { let _ = deliver(&webview, "release_list_error", serde_json::json!({"message": error})); }
             Event::UserEvent(AppEvent::FriendsResolved(Ok(page))) => {
                 let _ = deliver(
                     &webview,

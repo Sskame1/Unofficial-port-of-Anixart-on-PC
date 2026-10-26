@@ -4,8 +4,8 @@
 # Extracted APK resources, tools, and decompilation output.
 /decompile/
 
-# Research notes and design documents are kept locally.
-/docs/
+# Large generated planning material stays local; keep feature notes under docs tracked.
+/docs/superpowers/
 
 # Rust build output.
 /target/

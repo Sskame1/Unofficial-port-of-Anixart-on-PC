@@ -57,9 +57,18 @@ pub enum AppCommand {
         collection_id: u64,
         request_id: u64,
     },
+    ToggleCollectionFavorite {
+        collection_id: u64,
+        enabled: bool,
+    },
+    AddReleaseToList {
+        release_id: u64,
+        list_type: u8,
+    },
     LoadFriends {
         page: u32,
     },
+    RefreshProfile,
     LoadReleaseComments {
         release_id: u64,
         page: u32,
@@ -149,9 +158,20 @@ pub enum AppEvent {
         request_id: u64,
         result: Result<crate::features::account::models::CollectionDetails, String>,
     },
+    ToggleCollectionFavorite {
+        collection_id: u64,
+        enabled: bool,
+    },
+    AddReleaseToList {
+        release_id: u64,
+        list_type: u8,
+    },
+    CollectionFavoriteResolved(Result<bool, String>),
+    ReleaseListResolved(Result<(), String>),
     LoadFriends {
         page: u32,
     },
+    RefreshProfile,
     FriendsResolved(Result<crate::features::profile::models::FriendsPage, String>),
     LoadReleaseComments {
         release_id: u64,
@@ -312,10 +332,29 @@ impl AppCommand {
                 request_id,
             }),
             Self::OpenCollection { .. } => Err("ID коллекции должен быть больше нуля.".to_owned()),
+            Self::ToggleCollectionFavorite {
+                collection_id,
+                enabled,
+            } if collection_id > 0 => Ok(AppEvent::ToggleCollectionFavorite {
+                collection_id,
+                enabled,
+            }),
+            Self::ToggleCollectionFavorite { .. } => {
+                Err("ID коллекции должен быть больше нуля.".to_owned())
+            }
+            Self::AddReleaseToList {
+                release_id,
+                list_type,
+            } if release_id > 0 && (1..=5).contains(&list_type) => Ok(AppEvent::AddReleaseToList {
+                release_id,
+                list_type,
+            }),
+            Self::AddReleaseToList { .. } => Err("Релиз или тип списка указан неверно.".to_owned()),
             Self::LoadFriends { page } if page > 0 => Ok(AppEvent::LoadFriends { page }),
             Self::LoadFriends { .. } => {
                 Err("Номер страницы друзей должен быть больше нуля.".to_owned())
             }
+            Self::RefreshProfile => Ok(AppEvent::RefreshProfile),
             Self::LoadReleaseComments { release_id, page } if release_id > 0 && page > 0 => {
                 Ok(AppEvent::LoadReleaseComments { release_id, page })
             }

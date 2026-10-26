@@ -1,6 +1,8 @@
 use crate::{
     api::{client::ApiClient, error::ApiError},
-    features::account::models::{BookmarkPage, CollectionDetails, CollectionPage, FeedPage},
+    features::account::models::{
+        BookmarkPage, CollectionComment, CollectionDetails, CollectionPage, FeedPage, Page,
+    },
 };
 
 fn ensure(code: i32, name: &str) -> Result<(), ApiError> {
@@ -119,10 +121,57 @@ pub fn collection(
         crate::features::discover::models::ReleaseCard,
     > = client.get_json(releases_url)?;
     ensure(releases.code, "collection releases")?;
+    let mut comments_url = client.url(&format!("collection/comment/all/{id}/0"))?;
+    comments_url
+        .query_pairs_mut()
+        .append_pair("sort", "1")
+        .append_pair("token", token.unwrap_or(""));
+    let comments = client
+        .get_json::<Page<CollectionComment>>(comments_url)
+        .map(|page| page.content)
+        .unwrap_or_default();
     Ok(CollectionDetails {
         releases: releases.content,
+        comments,
         ..details
     })
+}
+
+pub fn toggle_collection_favorite(
+    client: &ApiClient,
+    token: &str,
+    id: u64,
+    enabled: bool,
+) -> Result<(), ApiError> {
+    let path = if enabled {
+        format!("collectionFavorite/add/{id}")
+    } else {
+        format!("collectionFavorite/delete/{id}")
+    };
+    let mut url = client.url(&path)?;
+    url.query_pairs_mut().append_pair("token", token);
+    let response: serde_json::Value = client.get_json(url)?;
+    let code = response
+        .get("code")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(0);
+    ensure(code as i32, "collection favorite")
+}
+
+pub fn add_release_to_list(
+    client: &ApiClient,
+    token: &str,
+    release_id: u64,
+    list_type: u8,
+) -> Result<(), ApiError> {
+    let mut url = client.url(&format!("profile/list/add/{list_type}/{release_id}"))?;
+    url.query_pairs_mut().append_pair("token", token);
+    let response: serde_json::Value = client.get_json(url)?;
+    let code = response
+        .get("code")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(-1);
+    ensure(code as i32, "add release to list")
 }
 
 pub fn article(

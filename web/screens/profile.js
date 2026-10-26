@@ -3,7 +3,7 @@
     return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
   }
   function formatMinutes(value) {
-    const minutes = Math.round(Number(value || 0) / 60);
+    const minutes = Math.round(Number(value || 0));
     if (minutes < 60) return `${minutes} мин.`;
     return `${Math.floor(minutes / 60)} ч ${minutes % 60} мин.`;
   }
