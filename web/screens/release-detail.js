@@ -431,7 +431,10 @@
       button.dataset.previousVote = card.dataset.currentVote || "0";
       button.dataset.requestedVote = button.dataset.vote;
       card.querySelectorAll("[data-vote]").forEach(voteButton => { voteButton.disabled = true; });
-      const requestedVote = Number(button.dataset.vote) === Number(card.dataset.currentVote) ? 0 : Number(button.dataset.vote);
+      // The APK sends the selected vote again when the user taps it twice.
+      // Anixart treats that repeated value as removing the existing vote;
+      // vote=0 is not a valid release-comment endpoint value.
+      const requestedVote = Number(button.dataset.vote);
       window.appIpc.send({ action: "vote_release_comment", comment_id: commentId, vote: requestedVote });
     }));
     root.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => loadReviews(Number(button.dataset.page))));

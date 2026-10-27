@@ -34,6 +34,11 @@ pub fn vote_release_comment(
     vote: i8,
     token: &str,
 ) -> Result<(), ApiError> {
+    if !(1..=2).contains(&vote) {
+        return Err(ApiError::InvalidResponse(
+            "Comment vote must be 1 or 2.".to_owned(),
+        ));
+    }
     let mut url = client.url(&format!("release/comment/vote/{comment_id}/{vote}"))?;
     url.query_pairs_mut().append_pair("token", token);
     let response: Value = client.get_json(url)?;
