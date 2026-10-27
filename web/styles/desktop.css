@@ -513,10 +513,10 @@ body {
 .rating-row-count { text-align: right; }
 .release-vote-actions button.is-selected { color: var(--accent); transform: scale(1.12); }
 .review-spoiler { display: inline-block; padding: 3px 7px; border-radius: 5px; background: var(--accent-tint, var(--bg-primary)); color: var(--accent); font-size: 11px; }
-.release-review-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; }
-.review-votes { display: inline-flex; align-items: center; gap: 8px; }
+.release-review-actions { position: relative; display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; }
+.review-votes { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 .review-votes button { min-width: 30px; height: 28px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-primary); color: var(--text-secondary); cursor: pointer; }
-.review-vote-error { display: block; max-width: 260px; color: var(--danger, #d45b72); font-size: 12px; }
+.review-vote-error { position: absolute; top: calc(100% + 3px); right: 0; max-width: 260px; color: var(--danger, #d45b72); font-size: 12px; text-align: right; }
 .review-votes button:hover, .review-votes button.is-voted { border-color: var(--accent); color: var(--accent); }
 .review-votes button:disabled { cursor: default; opacity: .55; }
 .reviews-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px; color: var(--text-secondary); }
