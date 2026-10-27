@@ -148,7 +148,22 @@
     const row = document.getElementById("release-screenshots");
     if (!row) return;
     if (!images.length) { row.innerHTML = '<p class="placeholder">Скриншоты для этого релиза не добавлены.</p>'; return; }
-    row.innerHTML = images.map(url => `<img src="${escapeHtml(url)}" alt="Скриншот" loading="lazy" referrerpolicy="no-referrer">`).join("");
+    row.innerHTML = images.map((url, index) => `<button class="screenshot-thumb" type="button" data-screenshot-index="${index}" aria-label="Открыть скриншот ${index + 1}"><img src="${escapeHtml(url)}" alt="Скриншот ${index + 1}" loading="lazy" referrerpolicy="no-referrer"></button>`).join("");
+    row.querySelectorAll("[data-screenshot-index]").forEach(button => button.addEventListener("click", () => openScreenshotViewer(images, Number(button.dataset.screenshotIndex))));
+  }
+  function openScreenshotViewer(images, index) {
+    const current = Math.max(0, Math.min(index, images.length - 1));
+    const overlay = document.createElement("div");
+    overlay.className = "screenshot-viewer";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.innerHTML = `<div class="screenshot-viewer-panel"><button class="screenshot-viewer-close" type="button" aria-label="Закрыть">×</button><img class="screenshot-viewer-image" src="${escapeHtml(images[current])}" alt="Скриншот ${current + 1}" referrerpolicy="no-referrer"><div class="screenshot-viewer-counter">${current + 1} / ${images.length}</div></div>`;
+    const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
+    const onKey = event => { if (event.key === "Escape") close(); };
+    overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+    overlay.querySelector(".screenshot-viewer-close").addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.append(overlay);
   }
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   function renderWatch(release) {
