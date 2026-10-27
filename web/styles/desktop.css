@@ -343,6 +343,52 @@ body {
   margin-top: 4px;
 }
 
+/* Keep related titles in a compact, single horizontal strip. */
+.detail-poster-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 12px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) var(--bg-secondary);
+}
+
+.detail-poster-row .related-release-card {
+  flex: 0 0 128px;
+  min-width: 0;
+  margin: 0;
+  transform: none;
+  scroll-snap-align: start;
+}
+
+.detail-poster-row .related-release-card:hover {
+  transform: translateY(-3px);
+}
+
+.detail-poster-row .related-release-card .release-poster {
+  width: 100%;
+  margin-bottom: 7px;
+  border-radius: 10px;
+}
+
+.detail-poster-row .related-release-card .release-title {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.detail-poster-row .related-release-card .release-meta {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .detail-poster-row { gap: 10px; }
+  .detail-poster-row .related-release-card { flex-basis: 104px; }
+}
+
 /* Profile */
 .profile-container {
   max-width: 800px;
