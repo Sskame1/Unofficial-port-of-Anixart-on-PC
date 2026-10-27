@@ -48,6 +48,18 @@ pub struct ReleaseCard {
     #[serde(default)]
     pub vote_count: Option<u64>,
     #[serde(default)]
+    pub vote_1_count: Option<u64>,
+    #[serde(default)]
+    pub vote_2_count: Option<u64>,
+    #[serde(default)]
+    pub vote_3_count: Option<u64>,
+    #[serde(default)]
+    pub vote_4_count: Option<u64>,
+    #[serde(default)]
+    pub vote_5_count: Option<u64>,
+    #[serde(default)]
+    pub your_vote: Option<u8>,
+    #[serde(default)]
     pub favorites_count: Option<u64>,
     #[serde(rename = "profile_list_status", default)]
     pub profile_list_status: Option<i32>,

@@ -9,6 +9,8 @@
   let reviewSort = 3;
   let pendingReviewVote = null;
   let reviewPage = 1;
+  let pendingFavorite = null;
+  let pendingReleaseVote = null;
 
   function renderReleaseDetail(release) {
     selectedRelease = release;
@@ -30,16 +32,17 @@
         <section class="release-actionbar" aria-label="Действия релиза">
           <button id="release-watch" class="watch-button" type="button"><span>▷</span> Смотреть</button>
           <button class="release-action release-list-action" data-action="status" type="button"><span>＋</span><small id="release-list-label">Список</small></button>
-          <button class="release-action" data-action="favorite" type="button"><span>▮</span><small>В избранное</small></button>
-          <button class="release-action" data-action="comments" type="button"><span>☷</span><small>Отзывы</small></button>
+          <button class="release-action" data-action="favorite" type="button"><span>▮</span><small id="release-favorite-label">В избранное</small></button>
+          <button class="release-action" data-action="comments" type="button"><span>☷</span><small>Комментарии</small></button>
         </section>
         <section class="release-info-block" id="release-info">
           <div class="release-facts" id="release-facts"></div>
           <div class="release-description-block"><p id="release-description"></p><button id="release-expand" type="button">Показать ещё</button></div>
         </section>
-        <section class="release-rating-block"><div class="release-section-heading"><h2>Рейтинг</h2><span id="release-rating"></span></div><div class="rating-bars"><i style="--value:92%"></i><i style="--value:77%"></i><i style="--value:54%"></i><i style="--value:31%"></i><i style="--value:16%"></i></div><p id="release-votes"></p><div class="release-vote-actions"><button data-vote="1">★</button><button data-vote="2">★</button><button data-vote="3">★</button><button data-vote="4">★</button><button data-vote="5">★</button></div></section>
+        <section class="release-rating-block"><div class="release-section-heading"><h2>Рейтинг</h2><span id="release-rating"></span></div><div class="rating-breakdown" id="release-rating-breakdown"></div><p id="release-votes"></p><div class="release-vote-actions"><button data-vote="1" aria-label="Поставить 1 звезду">★</button><button data-vote="2" aria-label="Поставить 2 звезды">★</button><button data-vote="3" aria-label="Поставить 3 звезды">★</button><button data-vote="4" aria-label="Поставить 4 звезды">★</button><button data-vote="5" aria-label="Поставить 5 звёзд">★</button></div></section>
         <section class="release-subsection"><div class="release-section-heading"><h2>Похожие релизы</h2><button type="button">Все ›</button></div><div class="detail-poster-row" id="related-releases"></div></section>
         <section class="release-subsection"><div class="release-section-heading"><h2>Скриншоты</h2></div><div class="detail-screenshot-row" id="release-screenshots"></div></section>
+        <section class="release-subsection release-comments" id="release-popular-comments"><div class="release-section-heading"><div><h2>Отзывы</h2><p class="release-comments-hint">Комментарии с наибольшим числом лайков</p></div><button class="btn btn-secondary" type="button" id="release-popular-comments-more">Все отзывы</button></div><div id="release-popular-comments-list" class="release-reviews-list"></div></section>
       </article>`;
     const setText = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = value || ""; };
     setText("release-title", release.title_ru || release.title_original || "Релиз");
@@ -50,6 +53,8 @@
     setText("release-rating", release.grade ? `★ ${release.grade.toFixed(1)}` : "—");
     setText("release-votes", release.vote_count ? `${release.vote_count.toLocaleString("ru-RU")} оценок` : "Голосование сообщества");
     updateListButton(release.profile_list_status);
+    updateFavoriteButton(release.is_favorite);
+    renderRatingBreakdown(release);
     const poster = document.getElementById("release-poster");
     if (release.image) { poster.src = release.image; poster.referrerPolicy = "no-referrer"; poster.alt = `Постер: ${release.title_ru || release.title_original}`; }
     const backdrop = document.getElementById("release-backdrop");
@@ -68,6 +73,9 @@
     document.getElementById("release-back").addEventListener("click", () => window.app.backFromRelease());
     renderRelated(release.related_releases || release.recommended_releases || []);
     renderScreenshots(release.screenshot_images || []);
+    document.getElementById("release-popular-comments-list").innerHTML = '<p class="placeholder">Загружаем популярные отзывы…</p>';
+    window.appIpc.send({ action: "load_release_comments", release_id: release.id, page: 1, sort: 3 });
+    document.getElementById("release-popular-comments-more").addEventListener("click", () => { reviewSort = 3; window.app.navigate("reviews"); });
     document.getElementById("release-watch").addEventListener("click", () => { window.app.currentRoute = "watch"; window.app.navigate("watch"); });
     document.getElementById("release-expand").addEventListener("click", event => {
       const desc = document.getElementById("release-description");
@@ -75,17 +83,18 @@
     });
     document.querySelectorAll(".release-action").forEach(button => button.addEventListener("click", () => {
       if (button.dataset.action === "comments") {
-        reviewSort = 3;
-        window.app.navigate("reviews");
+        window.app.navigate("comments");
       } else if (button.dataset.action === "status") showListPicker(release);
-      else window.app.auth("signin");
+      else if (button.dataset.action === "favorite") toggleFavorite(release);
     }));
-    document.querySelectorAll(".release-vote-actions button").forEach(button => button.addEventListener("click", () => window.app.auth("signin")));
+    document.querySelectorAll(".release-vote-actions button").forEach(button => button.addEventListener("click", () => voteRelease(Number(button.dataset.vote))));
   }
-  function renderReviews(release) {
+  function renderReviews(release, initialSort = reviewSort) {
     const root = document.getElementById("screen-content");
     if (!release) return renderReleaseDetail({});
-    root.innerHTML = `<section class="screen reviews-page"><button class="watch-back-button" id="reviews-back" type="button">← <span>К релизу</span></button><header class="reviews-heading"><h1>Отзывы</h1><p>${escapeHtml(release.title_ru || release.title_original || "Релиз")}</p></header><div class="reviews-toolbar"><span id="reviews-count">Отзывы пользователей</span><label for="reviews-sort">Сортировка</label><select id="reviews-sort"><option value="3" ${reviewSort === 3 ? "selected" : ""}>Популярные</option><option value="1" ${reviewSort === 1 ? "selected" : ""}>Сначала новые</option><option value="2" ${reviewSort === 2 ? "selected" : ""}>Сначала старые</option></select></div><div id="release-reviews-list" class="release-reviews-list"><p class="placeholder">Загружаем отзывы…</p></div></section>`;
+    reviewSort = initialSort;
+    const isComments = initialSort === 1;
+    root.innerHTML = `<section class="screen reviews-page"><button class="watch-back-button" id="reviews-back" type="button">← <span>К релизу</span></button><header class="reviews-heading"><h1>${isComments ? "Комментарии" : "Отзывы"}</h1><p>${escapeHtml(release.title_ru || release.title_original || "Релиз")}</p></header><div class="reviews-toolbar"><span id="reviews-count">Загрузка…</span><label for="reviews-sort">Сортировка</label><select id="reviews-sort"><option value="3" ${reviewSort === 3 ? "selected" : ""}>Популярные</option><option value="1" ${reviewSort === 1 ? "selected" : ""}>Сначала новые</option><option value="2" ${reviewSort === 2 ? "selected" : ""}>Сначала старые</option></select></div><div id="release-reviews-list" class="release-reviews-list"><p class="placeholder">Загружаем ${isComments ? "комментарии" : "отзывы"}…</p></div></section>`;
     document.getElementById("reviews-back").addEventListener("click", () => window.app.navigate("release"));
     document.getElementById("reviews-sort").addEventListener("change", event => {
       reviewSort = Number(event.currentTarget.value);
@@ -110,7 +119,7 @@
       if (!window.appStorage?.get("anixart_token")) { overlay.remove(); window.app.auth("signin"); return; }
       pendingListType = listType;
       button.disabled = true; button.textContent = "Сохраняем…";
-      window.appIpc.send({ action: "add_release_to_list", release_id: release.id, list_type: listType });
+      window.appIpc.send({ action: "add_release_to_list", release_id: release.id, list_type: listType, current_status: release.profile_list_status ?? null });
     }));
     document.body.append(overlay);
   }
@@ -119,6 +128,7 @@
     if (selectedRelease && pendingListType !== null) {
       selectedRelease.profile_list_status = pendingListType || null;
       updateListButton(selectedRelease.profile_list_status);
+      refreshReleaseFromApi();
     }
     pendingListType = null;
     window.app.setStatus("Список", "Список релиза обновлён.");
@@ -136,8 +146,64 @@
     const names = { 1: "Смотрю", 2: "В планах", 3: "Просмотрено", 4: "Отложено", 5: "Брошено" };
     label.textContent = names[Number(status)] || "Список";
     button.classList.toggle("is-selected", Boolean(names[Number(status)]));
+    button.querySelector("span").textContent = names[Number(status)] ? "✓" : "＋";
     button.setAttribute("aria-label", names[Number(status)] ? `Изменить список: ${names[Number(status)]}` : "Добавить в список");
   }
+  function updateFavoriteButton(favorite) {
+    const button = document.querySelector('.release-action[data-action="favorite"]');
+    const label = document.getElementById("release-favorite-label");
+    if (!button || !label) return;
+    const enabled = Boolean(favorite);
+    label.textContent = enabled ? "В избранном" : "В избранное";
+    button.classList.toggle("is-selected", enabled);
+    button.querySelector("span").textContent = enabled ? "♥" : "▮";
+    button.setAttribute("aria-pressed", String(enabled));
+  }
+  function toggleFavorite(release) {
+    if (!window.appStorage?.get("anixart_token")) return window.app.auth("signin");
+    pendingFavorite = !Boolean(release.is_favorite);
+    const button = document.querySelector('.release-action[data-action="favorite"]');
+    if (button) button.disabled = true;
+    window.appIpc.send({ action: "toggle_release_favorite", release_id: release.id, enabled: pendingFavorite });
+  }
+  function favoriteDone(payload) {
+    if (selectedRelease) selectedRelease.is_favorite = Boolean(payload.enabled);
+    updateFavoriteButton(payload.enabled);
+    document.querySelector('.release-action[data-action="favorite"]')?.removeAttribute("disabled");
+    pendingFavorite = null;
+    refreshReleaseFromApi();
+  }
+  function favoriteError(message) {
+    document.querySelector('.release-action[data-action="favorite"]')?.removeAttribute("disabled");
+    pendingFavorite = null;
+    window.app.setStatus("Избранное", message);
+  }
+  function refreshReleaseFromApi() {
+    if (selectedRelease?.id) window.appIpc.send({ action: "open_release", release_id: selectedRelease.id });
+  }
+  function renderRatingBreakdown(release) {
+    const root = document.getElementById("release-rating-breakdown");
+    if (!root) return;
+    const counts = [release.vote_1_count, release.vote_2_count, release.vote_3_count, release.vote_4_count, release.vote_5_count].map(value => Number(value) || 0);
+    const total = Number(release.vote_count) || counts.reduce((sum, value) => sum + value, 0);
+    root.innerHTML = counts.slice().reverse().map((count, reverseIndex) => {
+      const stars = 5 - reverseIndex;
+      const percent = total > 0 ? Math.round(count * 100 / total) : 0;
+      return `<div class="rating-row"><span class="rating-row-label">${stars} ★</span><div class="rating-track"><i style="width:${percent}%"></i></div><span class="rating-row-count">${count.toLocaleString("ru-RU")}</span></div>`;
+    }).join("");
+    root.dataset.yourVote = String(Number(release.your_vote) || 0);
+    document.querySelectorAll(".release-vote-actions button").forEach(button => button.classList.toggle("is-selected", Number(button.dataset.vote) === Number(release.your_vote)));
+  }
+  function voteRelease(vote) {
+    if (!window.appStorage?.get("anixart_token")) return window.app.auth("signin");
+    pendingReleaseVote = vote;
+    window.appIpc.send({ action: "vote_release", release_id: selectedRelease.id, vote });
+  }
+  function voteDone(payload) {
+    if (selectedRelease) selectedRelease.your_vote = Number(payload.vote) || null;
+    refreshReleaseFromApi();
+  }
+  function voteError(message) { pendingReleaseVote = null; window.app.setStatus("Рейтинг", message); }
   function renderRelated(items) {
     const row = document.getElementById("related-releases");
     if (!row) return;
@@ -269,18 +335,19 @@
     if (list) { const node = document.createElement("p"); node.className = "placeholder"; node.textContent = `Не удалось загрузить данные: ${message}`; list.replaceChildren(node); }
   }
   function showReviews(response) {
-    const root = document.getElementById("release-reviews-list");
+    const compact = document.getElementById("release-popular-comments-list");
+    const root = document.getElementById("release-reviews-list") || compact;
     if (!root) return;
     const items = response.content || [];
     const total = Number(response.total_count) || 0;
     const totalPages = Number(response.total_page_count) || 1;
     const count = document.getElementById("reviews-count");
-    if (count) count.textContent = `${total.toLocaleString("ru-RU")} отзывов`;
+    if (count) count.textContent = `${total.toLocaleString("ru-RU")} ${reviewSort === 1 ? "комментариев" : "отзывов"}`;
     if (!items.length) {
       root.innerHTML = '<p class="placeholder">Отзывов пока нет.</p>';
       return;
     }
-    const cards = items.map(item => {
+    const cards = items.slice(0, compact ? 3 : items.length).map(item => {
       const profile = item.profile || {};
       const avatar = profile.avatar && /^https?:\/\//i.test(profile.avatar)
         ? `<img class="review-avatar" src="${escapeHtml(profile.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
@@ -293,7 +360,7 @@
     }).join("");
     const hasPrevious = reviewPage > 1;
     const hasNext = totalPages > reviewPage;
-    root.innerHTML = `${cards}<nav class="reviews-pagination" aria-label="Страницы отзывов"><button type="button" data-page="${reviewPage - 1}" ${hasPrevious ? "" : "disabled"}>← Назад</button><span>${reviewPage} / ${totalPages}</span><button type="button" data-page="${reviewPage + 1}" ${hasNext ? "" : "disabled"}>Далее →</button></nav>`;
+    root.innerHTML = `${cards}${compact ? "" : `<nav class="reviews-pagination" aria-label="Страницы отзывов"><button type="button" data-page="${reviewPage - 1}" ${hasPrevious ? "" : "disabled"}>← Назад</button><span>${reviewPage} / ${totalPages}</span><button type="button" data-page="${reviewPage + 1}" ${hasNext ? "" : "disabled"}>Далее →</button></nav>`}`;
     root.querySelectorAll("[data-vote]").forEach(button => button.addEventListener("click", () => {
       const card = button.closest("[data-review-id]");
       const commentId = Number(card?.dataset.reviewId);
@@ -306,7 +373,7 @@
     root.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => loadReviews(Number(button.dataset.page))));
   }
   function showReviewsError(message) {
-    const root = document.getElementById("release-reviews-list");
+    const root = document.getElementById("release-reviews-list") || document.getElementById("release-popular-comments-list");
     if (root) root.innerHTML = `<p class="placeholder">Не удалось загрузить отзывы: ${escapeHtml(message)}</p>`;
   }
   function finishReviewVote(success, message) {
@@ -315,5 +382,5 @@
     if (success) loadReviews(reviewPage);
     else window.app.setStatus("Оценка отзыва", message || "Не удалось отправить оценку");
   }
-  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, renderReviews, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showReviews, showReviewsError, finishReviewVote, listDone, listError };
+  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, renderReviews, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showReviews, showReviewsError, finishReviewVote, listDone, listError, favoriteDone, favoriteError, voteDone, voteError };
 })();

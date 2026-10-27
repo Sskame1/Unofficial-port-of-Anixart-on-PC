@@ -174,6 +174,74 @@ pub fn add_release_to_list(
     ensure(code as i32, "add release to list")
 }
 
+pub fn update_release_list(
+    client: &ApiClient,
+    token: &str,
+    release_id: u64,
+    current: Option<i32>,
+    next: u8,
+) -> Result<(), ApiError> {
+    if let Some(status) = current.filter(|status| *status != i32::from(next)) {
+        let mut url = client.url(&format!("profile/list/delete/{status}/{release_id}"))?;
+        url.query_pairs_mut().append_pair("token", token);
+        let response: serde_json::Value = client.get_json(url)?;
+        ensure(
+            response
+                .get("code")
+                .and_then(serde_json::Value::as_i64)
+                .unwrap_or(-1) as i32,
+            "delete release from list",
+        )?;
+    }
+    add_release_to_list(client, token, release_id, next)
+}
+
+pub fn toggle_release_favorite(
+    client: &ApiClient,
+    token: &str,
+    release_id: u64,
+    enabled: bool,
+) -> Result<(), ApiError> {
+    let path = if enabled {
+        format!("favorite/add/{release_id}")
+    } else {
+        format!("favorite/delete/{release_id}")
+    };
+    let mut url = client.url(&path)?;
+    url.query_pairs_mut().append_pair("token", token);
+    let response: serde_json::Value = client.get_json(url)?;
+    ensure(
+        response
+            .get("code")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(-1) as i32,
+        "release favorite",
+    )
+}
+
+pub fn vote_release(
+    client: &ApiClient,
+    token: &str,
+    release_id: u64,
+    vote: u8,
+) -> Result<(), ApiError> {
+    let path = if vote == 0 {
+        format!("release/vote/delete/{release_id}")
+    } else {
+        format!("release/vote/add/{release_id}/{vote}")
+    };
+    let mut url = client.url(&path)?;
+    url.query_pairs_mut().append_pair("token", token);
+    let response: serde_json::Value = client.get_json(url)?;
+    ensure(
+        response
+            .get("code")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(-1) as i32,
+        "release vote",
+    )
+}
+
 pub fn article(
     client: &ApiClient,
     token: Option<&str>,

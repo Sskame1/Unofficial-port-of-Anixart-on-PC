@@ -58,7 +58,9 @@
     } else if (route === "player" && window.releaseDetailScreen) {
       window.releaseDetailScreen.renderPlayer(window.app.currentRelease, window.app.currentEpisode);
     } else if (route === "reviews" && window.releaseDetailScreen) {
-      window.releaseDetailScreen.renderReviews(window.app.currentRelease);
+      window.releaseDetailScreen.renderReviews(window.app.currentRelease, 3);
+    } else if (route === "comments" && window.releaseDetailScreen) {
+      window.releaseDetailScreen.renderReviews(window.app.currentRelease, 1);
     } else if (route === "bookmarks" && window.appScreens.bookmarks) {
       window.appScreens.bookmarks();
     } else if (route === "feed" && window.appScreens.feed) {
@@ -151,11 +153,19 @@
     } else if (message.event === "release_comments_data") {
       window.releaseDetailScreen?.showReviews(message.payload || {});
     } else if (message.event === "release_comments_error") {
-      window.releaseDetailScreen?.showReviewsError(message.payload?.message || "Не удалось загрузить отзывы");
+      window.releaseDetailScreen?.showReviewsError(message.payload?.message || "Не удалось загрузить комментарии");
     } else if (message.event === "release_comment_vote_done") {
       window.releaseDetailScreen?.finishReviewVote(true);
     } else if (message.event === "release_comment_vote_error") {
       window.releaseDetailScreen?.finishReviewVote(false, message.payload?.message || "Не удалось отправить оценку");
+    } else if (message.event === "release_favorite_done") {
+      window.releaseDetailScreen?.favoriteDone(message.payload || {});
+    } else if (message.event === "release_favorite_error") {
+      window.releaseDetailScreen?.favoriteError(message.payload?.message || "Не удалось обновить избранное");
+    } else if (message.event === "release_vote_done") {
+      window.releaseDetailScreen?.voteDone(message.payload || {});
+    } else if (message.event === "release_vote_error") {
+      window.releaseDetailScreen?.voteError(message.payload?.message || "Не удалось сохранить оценку");
     } else if (message.event === "schedule_data") {
       window.appScreens.showSchedule?.(message.payload || {});
     } else if (message.event === "schedule_error") {

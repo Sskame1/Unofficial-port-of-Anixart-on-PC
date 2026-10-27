@@ -427,6 +427,15 @@ body {
 .release-review-author strong { color: var(--text-primary); font-size: 14px; }
 .release-review-author small { color: var(--text-secondary); font-size: 11px; }
 .release-review-message { margin: 14px 0; color: var(--text-primary); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.release-comments-hint { margin: -7px 0 0; color: var(--text-secondary); font-size: 13px; }
+.release-popular-comments-list { display: grid; gap: 12px; }
+.rating-breakdown { display: grid; gap: 7px; margin: 10px 0 14px; }
+.rating-row { display: grid; grid-template-columns: 48px minmax(80px, 1fr) 72px; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 12px; }
+.rating-row-label { color: var(--text-primary); }
+.rating-track { height: 7px; overflow: hidden; border-radius: 8px; background: var(--bg-primary); }
+.rating-track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.rating-row-count { text-align: right; }
+.release-vote-actions button.is-selected { color: var(--accent); transform: scale(1.12); }
 .review-spoiler { display: inline-block; padding: 3px 7px; border-radius: 5px; background: var(--accent-tint, var(--bg-primary)); color: var(--accent); font-size: 11px; }
 .release-review-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; }
 .review-votes { display: inline-flex; align-items: center; gap: 8px; }

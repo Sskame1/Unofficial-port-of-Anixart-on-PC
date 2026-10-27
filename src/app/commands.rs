@@ -64,6 +64,15 @@ pub enum AppCommand {
     AddReleaseToList {
         release_id: u64,
         list_type: u8,
+        current_status: Option<i32>,
+    },
+    ToggleReleaseFavorite {
+        release_id: u64,
+        enabled: bool,
+    },
+    VoteRelease {
+        release_id: u64,
+        vote: u8,
     },
     LoadFriends {
         page: u32,
@@ -170,9 +179,20 @@ pub enum AppEvent {
     AddReleaseToList {
         release_id: u64,
         list_type: u8,
+        current_status: Option<i32>,
+    },
+    ToggleReleaseFavorite {
+        release_id: u64,
+        enabled: bool,
+    },
+    VoteRelease {
+        release_id: u64,
+        vote: u8,
     },
     CollectionFavoriteResolved(Result<bool, String>),
     ReleaseListResolved(Result<(), String>),
+    ReleaseFavoriteResolved(Result<bool, String>),
+    ReleaseVoteResolved(Result<u8, String>),
     LoadFriends {
         page: u32,
     },
@@ -356,11 +376,27 @@ impl AppCommand {
             Self::AddReleaseToList {
                 release_id,
                 list_type,
+                current_status,
             } if release_id > 0 && (1..=5).contains(&list_type) => Ok(AppEvent::AddReleaseToList {
                 release_id,
                 list_type,
+                current_status,
             }),
             Self::AddReleaseToList { .. } => Err("Релиз или тип списка указан неверно.".to_owned()),
+            Self::ToggleReleaseFavorite {
+                release_id,
+                enabled,
+            } if release_id > 0 => Ok(AppEvent::ToggleReleaseFavorite {
+                release_id,
+                enabled,
+            }),
+            Self::ToggleReleaseFavorite { .. } => {
+                Err("ID релиза должен быть больше нуля.".to_owned())
+            }
+            Self::VoteRelease { release_id, vote } if release_id > 0 && vote <= 5 => {
+                Ok(AppEvent::VoteRelease { release_id, vote })
+            }
+            Self::VoteRelease { .. } => Err("Релиз или оценка указаны неверно.".to_owned()),
             Self::LoadFriends { page } if page > 0 => Ok(AppEvent::LoadFriends { page }),
             Self::LoadFriends { .. } => {
                 Err("Номер страницы друзей должен быть больше нуля.".to_owned())

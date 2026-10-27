@@ -63,6 +63,12 @@ pub fn page(
                     is_play_disabled: None,
                     is_view_blocked: None,
                     vote_count: None,
+                    vote_1_count: None,
+                    vote_2_count: None,
+                    vote_3_count: None,
+                    vote_4_count: None,
+                    vote_5_count: None,
+                    your_vote: None,
                     favorites_count: None,
                     profile_list_status: None,
                     is_favorite: None,
@@ -140,11 +146,15 @@ pub fn random_release(client: &ApiClient) -> Result<ReleaseCard, ApiError> {
         .ok_or_else(|| ApiError::InvalidResponse("Anixart returned no release.".to_owned()))
 }
 
-pub fn release(client: &ApiClient, release_id: u64) -> Result<ReleaseCard, ApiError> {
+pub fn release_with_token(
+    client: &ApiClient,
+    release_id: u64,
+    token: Option<&str>,
+) -> Result<ReleaseCard, ApiError> {
     let mut url = client.url(&format!("release/{release_id}"))?;
     url.query_pairs_mut()
         .append_pair("extended_mode", "true")
-        .append_pair("token", "");
+        .append_pair("token", token.unwrap_or(""));
     let response: ReleaseResponse = client.get_json(url)?;
     if response.code != 0 {
         return Err(ApiError::InvalidResponse(format!(
