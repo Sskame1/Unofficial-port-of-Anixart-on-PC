@@ -1,6 +1,7 @@
 pub mod api;
 
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 
 pub fn string_or_default<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
@@ -28,6 +29,24 @@ where
     D: Deserializer<'de>,
 {
     Option::<bool>::deserialize(deserializer).map(|value| value.unwrap_or_default())
+}
+
+fn episode_type_or_id<'de, D>(deserializer: D) -> Result<Option<EpisodeType>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Option::<Value>::deserialize(deserializer)? {
+        Some(Value::Object(value)) => serde_json::from_value(Value::Object(value))
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+        // Some API responses serialize Source.type as a numeric reference;
+        // the source row already contains its own name, so no nested details
+        // are needed to render it.
+        Some(Value::Number(_)) | Some(Value::String(_)) | None | Some(Value::Null) => Ok(None),
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "expected episode type object or ID, found {other}"
+        ))),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -72,7 +91,7 @@ pub struct EpisodeSource {
     pub episodes_count: u64,
     #[serde(rename = "view_count", default, deserialize_with = "u64_or_default")]
     pub view_count: u64,
-    #[serde(rename = "type", default)]
+    #[serde(rename = "type", default, deserialize_with = "episode_type_or_id")]
     pub source_type: Option<EpisodeType>,
     #[serde(default, deserialize_with = "u32_or_default")]
     pub quality: u32,
