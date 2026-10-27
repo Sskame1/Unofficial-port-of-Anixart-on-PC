@@ -564,7 +564,6 @@ body {
 .release-comment strong { display: block; margin-bottom: 7px; color: var(--text-primary); }
 .release-comment p { margin: 0; line-height: 1.6; }
 .profile-avatar { overflow: hidden; border: 2px solid var(--purple-accent, var(--accent)); background: var(--bg-primary); box-shadow: 0 0 0 2px var(--bg-secondary); }
-.related-release-card { transform: scale(.88); transform-origin: top left; margin-right: -10%; margin-bottom: -8%; }
 .list-picker-overlay { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 20px; background: rgb(0 0 0 / 58%); }
 .list-picker { width: min(420px, 100%); padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-secondary); box-shadow: var(--shadow); }
 .list-picker header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
