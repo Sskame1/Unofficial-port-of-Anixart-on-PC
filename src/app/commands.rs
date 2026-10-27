@@ -45,6 +45,8 @@ pub enum AppCommand {
         page: u32,
     },
     LoadFeed {
+        #[serde(default = "default_feed_kind")]
+        kind: String,
         page: u32,
         request_id: u64,
     },
@@ -148,6 +150,7 @@ pub enum AppEvent {
     },
     HistoryResolved(Result<crate::features::account::models::BookmarkPage, String>),
     LoadFeed {
+        kind: String,
         page: u32,
         request_id: u64,
     },
@@ -335,8 +338,10 @@ impl AppCommand {
             Self::LoadHistory { .. } => {
                 Err("Номер страницы истории должен быть больше нуля.".to_owned())
             }
-            Self::LoadFeed { page, request_id } if page > 0 => {
-                Ok(AppEvent::LoadFeed { page, request_id })
+            Self::LoadFeed { kind, page, request_id }
+                if page > 0 && matches!(kind.as_str(), "mine" | "latest") =>
+            {
+                Ok(AppEvent::LoadFeed { kind, page, request_id })
             }
             Self::LoadFeed { .. } => {
                 Err("Номер страницы ленты должен быть больше нуля.".to_owned())
@@ -450,4 +455,8 @@ impl AppCommand {
             }
         }
     }
+}
+
+fn default_feed_kind() -> String {
+    "mine".to_owned()
 }

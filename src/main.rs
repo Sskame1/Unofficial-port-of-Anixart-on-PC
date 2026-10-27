@@ -273,12 +273,13 @@ fn start() -> Result<()> {
                     );
                 }
             }
-            Event::UserEvent(AppEvent::LoadFeed { page, request_id }) => {
-                if let Some(session) = state.session.clone() {
+            Event::UserEvent(AppEvent::LoadFeed { kind, page, request_id }) => {
+                if kind == "latest" || state.session.is_some() {
                     let api = state.api.clone();
                     let proxy = proxy.clone();
+                    let token = state.session.as_ref().map(|session| session.token.clone()).unwrap_or_default();
                     std::thread::spawn(move || {
-                        let result = features::account::api::feed(&api, &session.token, page)
+                        let result = features::account::api::feed(&api, &token, page, &kind)
                             .map_err(|error| error.to_string());
                         let _ = proxy.send_event(AppEvent::FeedResolved { request_id, result });
                     });

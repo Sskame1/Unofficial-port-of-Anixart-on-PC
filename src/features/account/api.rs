@@ -45,8 +45,13 @@ pub fn bookmarks(
     Ok(response)
 }
 
-pub fn feed(client: &ApiClient, token: &str, page: u32) -> Result<FeedPage, ApiError> {
-    let mut url = client.url(&format!("feed/all/{}", page.saturating_sub(1)))?;
+pub fn feed(client: &ApiClient, token: &str, page: u32, kind: &str) -> Result<FeedPage, ApiError> {
+    let path = if kind == "latest" {
+        format!("feed/latest/all/{}", page.saturating_sub(1))
+    } else {
+        format!("feed/all/{}", page.saturating_sub(1))
+    };
+    let mut url = client.url(&path)?;
     url.query_pairs_mut()
         .append_pair("date", "0")
         .append_pair("token", token);
