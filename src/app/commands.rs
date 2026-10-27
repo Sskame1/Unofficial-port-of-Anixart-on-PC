@@ -72,6 +72,11 @@ pub enum AppCommand {
     LoadReleaseComments {
         release_id: u64,
         page: u32,
+        sort: u8,
+    },
+    VoteReleaseComment {
+        comment_id: u64,
+        vote: i8,
     },
     LoadArticle {
         article_id: u64,
@@ -176,8 +181,14 @@ pub enum AppEvent {
     LoadReleaseComments {
         release_id: u64,
         page: u32,
+        sort: u8,
     },
     ReleaseCommentsResolved(Result<serde_json::Value, String>),
+    VoteReleaseComment {
+        comment_id: u64,
+        vote: i8,
+    },
+    ReleaseCommentVoteResolved(Result<(), String>),
     LoadArticle(u64),
     ArticleResolved(Result<serde_json::Value, String>),
     LoadDiscoverPage {
@@ -355,11 +366,27 @@ impl AppCommand {
                 Err("Номер страницы друзей должен быть больше нуля.".to_owned())
             }
             Self::RefreshProfile => Ok(AppEvent::RefreshProfile),
-            Self::LoadReleaseComments { release_id, page } if release_id > 0 && page > 0 => {
-                Ok(AppEvent::LoadReleaseComments { release_id, page })
+            Self::LoadReleaseComments {
+                release_id,
+                page,
+                sort,
+            } if release_id > 0 && page > 0 && (1..=3).contains(&sort) => {
+                Ok(AppEvent::LoadReleaseComments {
+                    release_id,
+                    page,
+                    sort,
+                })
             }
             Self::LoadReleaseComments { .. } => {
                 Err("ID релиза или страница отзывов указаны неверно.".to_owned())
+            }
+            Self::VoteReleaseComment { comment_id, vote }
+                if comment_id > 0 && (-1..=1).contains(&vote) =>
+            {
+                Ok(AppEvent::VoteReleaseComment { comment_id, vote })
+            }
+            Self::VoteReleaseComment { .. } => {
+                Err("Комментарий или оценка указаны неверно.".to_owned())
             }
             Self::LoadArticle { article_id } if article_id > 0 => {
                 Ok(AppEvent::LoadArticle(article_id))

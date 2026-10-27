@@ -6,6 +6,9 @@
   let episodeTypes = [];
   let episodeSources = [];
   let episodeItems = [];
+  let reviewSort = 3;
+  let pendingReviewVote = null;
+  let reviewPage = 1;
 
   function renderReleaseDetail(release) {
     selectedRelease = release;
@@ -28,7 +31,7 @@
           <button id="release-watch" class="watch-button" type="button"><span>▷</span> Смотреть</button>
           <button class="release-action release-list-action" data-action="status" type="button"><span>＋</span><small id="release-list-label">Список</small></button>
           <button class="release-action" data-action="favorite" type="button"><span>▮</span><small>В избранное</small></button>
-          <button class="release-action" data-action="comments" type="button"><span>☷</span><small>Комментарии</small></button>
+          <button class="release-action" data-action="comments" type="button"><span>☷</span><small>Отзывы</small></button>
         </section>
         <section class="release-info-block" id="release-info">
           <div class="release-facts" id="release-facts"></div>
@@ -37,7 +40,6 @@
         <section class="release-rating-block"><div class="release-section-heading"><h2>Рейтинг</h2><span id="release-rating"></span></div><div class="rating-bars"><i style="--value:92%"></i><i style="--value:77%"></i><i style="--value:54%"></i><i style="--value:31%"></i><i style="--value:16%"></i></div><p id="release-votes"></p><div class="release-vote-actions"><button data-vote="1">★</button><button data-vote="2">★</button><button data-vote="3">★</button><button data-vote="4">★</button><button data-vote="5">★</button></div></section>
         <section class="release-subsection"><div class="release-section-heading"><h2>Похожие релизы</h2><button type="button">Все ›</button></div><div class="detail-poster-row" id="related-releases"></div></section>
         <section class="release-subsection"><div class="release-section-heading"><h2>Скриншоты</h2></div><div class="detail-screenshot-row" id="release-screenshots"></div></section>
-        <section class="release-subsection release-comments" id="release-comments"><div class="release-section-heading"><div><h2>Комментарии</h2><p class="release-comments-hint">Обсуждение релиза</p></div><button class="btn btn-secondary" type="button" id="release-comments-load">Загрузить</button></div><div id="release-comments-list" class="release-comments-list"></div></section>
       </article>`;
     const setText = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = value || ""; };
     setText("release-title", release.title_ru || release.title_original || "Релиз");
@@ -67,20 +69,35 @@
     renderRelated(release.related_releases || release.recommended_releases || []);
     renderScreenshots(release.screenshot_images || []);
     document.getElementById("release-watch").addEventListener("click", () => { window.app.currentRoute = "watch"; window.app.navigate("watch"); });
-    document.getElementById("release-comments-load").addEventListener("click", () => { document.getElementById("release-comments-list").innerHTML = '<p class="placeholder">Загружаем отзывы…</p>'; window.appIpc.send({ action: "load_release_comments", release_id: release.id, page: 1 }); });
     document.getElementById("release-expand").addEventListener("click", event => {
       const desc = document.getElementById("release-description");
       desc.classList.toggle("is-expanded"); event.currentTarget.textContent = desc.classList.contains("is-expanded") ? "Свернуть" : "Показать ещё";
     });
     document.querySelectorAll(".release-action").forEach(button => button.addEventListener("click", () => {
       if (button.dataset.action === "comments") {
-        const section = document.getElementById("release-comments");
-        section?.scrollIntoView({ behavior: "smooth", block: "start" });
-        document.getElementById("release-comments-load")?.click();
+        reviewSort = 3;
+        window.app.navigate("reviews");
       } else if (button.dataset.action === "status") showListPicker(release);
       else window.app.auth("signin");
     }));
     document.querySelectorAll(".release-vote-actions button").forEach(button => button.addEventListener("click", () => window.app.auth("signin")));
+  }
+  function renderReviews(release) {
+    const root = document.getElementById("screen-content");
+    if (!release) return renderReleaseDetail({});
+    root.innerHTML = `<section class="screen reviews-page"><button class="watch-back-button" id="reviews-back" type="button">← <span>К релизу</span></button><header class="reviews-heading"><h1>Отзывы</h1><p>${escapeHtml(release.title_ru || release.title_original || "Релиз")}</p></header><div class="reviews-toolbar"><span id="reviews-count">Отзывы пользователей</span><label for="reviews-sort">Сортировка</label><select id="reviews-sort"><option value="3" ${reviewSort === 3 ? "selected" : ""}>Популярные</option><option value="1" ${reviewSort === 1 ? "selected" : ""}>Сначала новые</option><option value="2" ${reviewSort === 2 ? "selected" : ""}>Сначала старые</option></select></div><div id="release-reviews-list" class="release-reviews-list"><p class="placeholder">Загружаем отзывы…</p></div></section>`;
+    document.getElementById("reviews-back").addEventListener("click", () => window.app.navigate("release"));
+    document.getElementById("reviews-sort").addEventListener("change", event => {
+      reviewSort = Number(event.currentTarget.value);
+      loadReviews(1);
+    });
+    loadReviews(1);
+  }
+  function loadReviews(page) {
+    reviewPage = page;
+    const list = document.getElementById("release-reviews-list");
+    if (list) list.innerHTML = '<p class="placeholder">Загружаем отзывы…</p>';
+    window.appIpc.send({ action: "load_release_comments", release_id: window.app.currentRelease?.id, page, sort: reviewSort });
   }
   function showListPicker(release) {
     const options = [[1,"Смотрю"],[2,"В планах"],[3,"Просмотрено"],[4,"Отложено"],[5,"Брошено"]];
@@ -236,11 +253,52 @@
     const list = active?.id === "episode-type-list" ? active : active?.id === "episode-source-section" ? document.getElementById("episode-source-list") : document.getElementById("episode-list");
     if (list) { const node = document.createElement("p"); node.className = "placeholder"; node.textContent = `Не удалось загрузить данные: ${message}`; list.replaceChildren(node); }
   }
-  function showComments(response) {
-    const root = document.getElementById("release-comments-list"); if (!root) return;
+  function showReviews(response) {
+    const root = document.getElementById("release-reviews-list");
+    if (!root) return;
     const items = response.content || [];
-    root.innerHTML = items.length ? items.map(item => `<article class="release-comment"><strong>${escapeHtml(item.profile?.login || "Пользователь")}</strong><p>${escapeHtml(item.message || "")}</p></article>`).join("") : '<p class="placeholder">Отзывов пока нет.</p>';
+    const total = Number(response.total_count) || 0;
+    const totalPages = Number(response.total_page_count) || 1;
+    const count = document.getElementById("reviews-count");
+    if (count) count.textContent = `${total.toLocaleString("ru-RU")} отзывов`;
+    if (!items.length) {
+      root.innerHTML = '<p class="placeholder">Отзывов пока нет.</p>';
+      return;
+    }
+    const cards = items.map(item => {
+      const profile = item.profile || {};
+      const avatar = profile.avatar && /^https?:\/\//i.test(profile.avatar)
+        ? `<img class="review-avatar" src="${escapeHtml(profile.avatar)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+        : '<span class="review-avatar-fallback" aria-hidden="true">◉</span>';
+      const date = Number(item.timestamp) > 0 ? new Date(Number(item.timestamp) * 1000).toLocaleDateString("ru-RU") : "";
+      const likes = Number(item.likes_count ?? item.vote_count) || 0;
+      const vote = Number(item.vote) || 0;
+      const deleted = Boolean(item.is_deleted);
+      return `<article class="release-review" data-review-id="${Number(item.id) || 0}"><header class="release-review-author">${avatar}<span><strong>${escapeHtml(profile.login || "Пользователь")}</strong><small>${date}${item.is_edited ? " · изменён" : ""}</small></span></header><p class="release-review-message">${deleted ? "Отзыв удалён" : escapeHtml(item.message || "")}</p>${item.is_spoiler ? '<span class="review-spoiler">Спойлер</span>' : ""}<footer class="release-review-actions"><span class="review-reply-count">↩ ${Number(item.reply_count) || 0}</span><span class="review-votes"><button type="button" data-vote="-1" aria-label="Не нравится" class="${vote < 0 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>−</button><strong>${likes}</strong><button type="button" data-vote="1" aria-label="Нравится" class="${vote > 0 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>＋</button></span></footer></article>`;
+    }).join("");
+    const hasPrevious = reviewPage > 1;
+    const hasNext = totalPages > reviewPage;
+    root.innerHTML = `${cards}<nav class="reviews-pagination" aria-label="Страницы отзывов"><button type="button" data-page="${reviewPage - 1}" ${hasPrevious ? "" : "disabled"}>← Назад</button><span>${reviewPage} / ${totalPages}</span><button type="button" data-page="${reviewPage + 1}" ${hasNext ? "" : "disabled"}>Далее →</button></nav>`;
+    root.querySelectorAll("[data-vote]").forEach(button => button.addEventListener("click", () => {
+      const card = button.closest("[data-review-id]");
+      const commentId = Number(card?.dataset.reviewId);
+      if (!commentId) return;
+      if (!window.appStorage?.get("anixart_token")) return window.app.auth("signin");
+      pendingReviewVote = button;
+      button.disabled = true;
+      window.appIpc.send({ action: "vote_release_comment", comment_id: commentId, vote: Number(button.dataset.vote) });
+    }));
+    root.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => loadReviews(Number(button.dataset.page))));
   }
-  function showCommentsError(message) { const root = document.getElementById("release-comments-list"); if (root) root.innerHTML = `<p class="placeholder">Не удалось загрузить отзывы: ${escapeHtml(message)}</p>`; }
-  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showComments, showCommentsError, listDone, listError };
+  function showReviewsError(message) {
+    const root = document.getElementById("release-reviews-list");
+    if (root) root.innerHTML = `<p class="placeholder">Не удалось загрузить отзывы: ${escapeHtml(message)}</p>`;
+  }
+  function finishReviewVote(success, message) {
+    if (pendingReviewVote) pendingReviewVote.disabled = false;
+    pendingReviewVote = null;
+    if (success) loadReviews(reviewPage);
+    else window.app.setStatus("Оценка отзыва", message || "Не удалось отправить оценку");
+  }
+  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, renderReviews, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showReviews, showReviewsError, finishReviewVote, listDone, listError };
 })();

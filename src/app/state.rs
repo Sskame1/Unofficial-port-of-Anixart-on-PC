@@ -39,6 +39,7 @@ impl AppState {
                 | "profile"
                 | "release"
                 | "watch"
+                | "reviews"
                 | "schedule"
                 | "collections"
                 | "filter"

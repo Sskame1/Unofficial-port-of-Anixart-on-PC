@@ -57,6 +57,8 @@
       window.releaseDetailScreen.renderWatch(window.app.currentRelease);
     } else if (route === "player" && window.releaseDetailScreen) {
       window.releaseDetailScreen.renderPlayer(window.app.currentRelease, window.app.currentEpisode);
+    } else if (route === "reviews" && window.releaseDetailScreen) {
+      window.releaseDetailScreen.renderReviews(window.app.currentRelease);
     } else if (route === "bookmarks" && window.appScreens.bookmarks) {
       window.appScreens.bookmarks();
     } else if (route === "feed" && window.appScreens.feed) {
@@ -147,9 +149,13 @@
     } else if (message.event === "feature_error") {
       window.releaseDetailScreen?.showError(message.payload?.message || "Ошибка загрузки");
     } else if (message.event === "release_comments_data") {
-      window.releaseDetailScreen?.showComments(message.payload || {});
+      window.releaseDetailScreen?.showReviews(message.payload || {});
     } else if (message.event === "release_comments_error") {
-      window.releaseDetailScreen?.showCommentsError(message.payload?.message || "Не удалось загрузить отзывы");
+      window.releaseDetailScreen?.showReviewsError(message.payload?.message || "Не удалось загрузить отзывы");
+    } else if (message.event === "release_comment_vote_done") {
+      window.releaseDetailScreen?.finishReviewVote(true);
+    } else if (message.event === "release_comment_vote_error") {
+      window.releaseDetailScreen?.finishReviewVote(false, message.payload?.message || "Не удалось отправить оценку");
     } else if (message.event === "schedule_data") {
       window.appScreens.showSchedule?.(message.payload || {});
     } else if (message.event === "schedule_error") {

@@ -384,9 +384,39 @@ body {
   font-size: 11px;
 }
 
+.reviews-page { max-width: 1040px; margin: 0 auto; padding-bottom: 32px; }
+.reviews-heading { margin: 18px 0 20px; }
+.reviews-heading h1 { margin: 0; font-size: clamp(24px, 3vw, 34px); }
+.reviews-heading p { margin: 5px 0 0; color: var(--text-secondary); }
+.reviews-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; color: var(--text-secondary); }
+.reviews-toolbar > span { margin-right: auto; }
+.reviews-toolbar select { min-width: 170px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-secondary); color: var(--text-primary); }
+.release-reviews-list { display: grid; gap: 12px; }
+.release-review { padding: 16px 18px; border: 1px solid var(--border); border-radius: 13px; background: var(--bg-secondary); }
+.release-review-author { display: flex; align-items: center; gap: 11px; }
+.review-avatar, .review-avatar-fallback { width: 40px; height: 40px; flex: 0 0 40px; border: 1px solid var(--border); border-radius: 50%; object-fit: cover; background: var(--bg-primary); }
+.review-avatar-fallback { display: grid; place-items: center; color: var(--text-secondary); }
+.release-review-author span { display: grid; gap: 3px; }
+.release-review-author strong { color: var(--text-primary); font-size: 14px; }
+.release-review-author small { color: var(--text-secondary); font-size: 11px; }
+.release-review-message { margin: 14px 0; color: var(--text-primary); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.review-spoiler { display: inline-block; padding: 3px 7px; border-radius: 5px; background: var(--accent-tint, var(--bg-primary)); color: var(--accent); font-size: 11px; }
+.release-review-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; }
+.review-votes { display: inline-flex; align-items: center; gap: 8px; }
+.review-votes button { min-width: 30px; height: 28px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-primary); color: var(--text-secondary); cursor: pointer; }
+.review-votes button:hover, .review-votes button.is-voted { border-color: var(--accent); color: var(--accent); }
+.review-votes button:disabled { cursor: default; opacity: .55; }
+.reviews-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px; color: var(--text-secondary); }
+.reviews-pagination button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; }
+.reviews-pagination button:disabled { opacity: .45; cursor: default; }
+
 @media (max-width: 560px) {
   .detail-poster-row { gap: 10px; }
   .detail-poster-row .related-release-card { flex-basis: 104px; }
+  .reviews-toolbar { flex-wrap: wrap; }
+  .reviews-toolbar > span { flex-basis: 100%; }
+  .reviews-toolbar select { flex: 1; }
+  .release-review { padding: 13px; }
 }
 
 /* Profile */

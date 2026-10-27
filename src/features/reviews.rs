@@ -8,6 +8,7 @@ pub fn release_comments(
     client: &ApiClient,
     release_id: u64,
     page: u32,
+    sort: u8,
     token: Option<&str>,
 ) -> Result<PageableResponse<Value>, ApiError> {
     let mut url = client.url(&format!(
@@ -15,7 +16,7 @@ pub fn release_comments(
         page.saturating_sub(1)
     ))?;
     url.query_pairs_mut()
-        .append_pair("sort", "0")
+        .append_pair("sort", &sort.to_string())
         .append_pair("token", token.unwrap_or(""));
     let response: PageableResponse<Value> = client.get_json(url)?;
     if response.code != 0 {
@@ -25,4 +26,21 @@ pub fn release_comments(
         )));
     }
     Ok(response)
+}
+
+pub fn vote_release_comment(
+    client: &ApiClient,
+    comment_id: u64,
+    vote: i8,
+    token: &str,
+) -> Result<(), ApiError> {
+    let mut url = client.url(&format!("release/comment/vote/{comment_id}/{vote}"))?;
+    url.query_pairs_mut().append_pair("token", token);
+    let response: Value = client.get_json(url)?;
+    if response.get("code").and_then(Value::as_i64) != Some(0) {
+        return Err(ApiError::InvalidResponse(
+            "Anixart rejected comment vote.".to_owned(),
+        ));
+    }
+    Ok(())
 }

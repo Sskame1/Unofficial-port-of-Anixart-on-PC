@@ -367,7 +367,7 @@ fn start() -> Result<()> {
                     });
                 }
             }
-            Event::UserEvent(AppEvent::LoadReleaseComments { release_id, page }) => {
+            Event::UserEvent(AppEvent::LoadReleaseComments { release_id, page, sort }) => {
                 let api = state.api.clone();
                 let proxy = proxy.clone();
                 let token = state.session.as_ref().map(|session| session.token.clone());
@@ -376,12 +376,35 @@ fn start() -> Result<()> {
                         &api,
                         release_id,
                         page,
+                        sort,
                         token.as_deref(),
                     )
                     .map(|page| serde_json::to_value(page).unwrap_or_default())
                     .map_err(|error| error.to_string());
                     let _ = proxy.send_event(AppEvent::ReleaseCommentsResolved(result));
                 });
+            }
+            Event::UserEvent(AppEvent::VoteReleaseComment { comment_id, vote }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result = features::reviews::vote_release_comment(
+                            &api,
+                            comment_id,
+                            vote,
+                            &session.token,
+                        )
+                        .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::ReleaseCommentVoteResolved(result));
+                    });
+                } else {
+                    let _ = deliver(
+                        &webview,
+                        "release_comment_vote_error",
+                        serde_json::json!({"message": "Войдите в аккаунт, чтобы оценивать отзывы."}),
+                    );
+                }
             }
             Event::UserEvent(AppEvent::LoadArticle(article_id)) => {
                 let api = state.api.clone();
@@ -609,6 +632,16 @@ fn start() -> Result<()> {
                 let _ = deliver(
                     &webview,
                     "release_comments_error",
+                    serde_json::json!({"message": error}),
+                );
+            }
+            Event::UserEvent(AppEvent::ReleaseCommentVoteResolved(Ok(()))) => {
+                let _ = deliver(&webview, "release_comment_vote_done", serde_json::json!({}));
+            }
+            Event::UserEvent(AppEvent::ReleaseCommentVoteResolved(Err(error))) => {
+                let _ = deliver(
+                    &webview,
+                    "release_comment_vote_error",
                     serde_json::json!({"message": error}),
                 );
             }
