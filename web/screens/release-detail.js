@@ -417,7 +417,7 @@
       const likes = Number(item.likes_count ?? item.vote_count) || 0;
       const vote = Number(item.vote) || 0;
       const deleted = Boolean(item.is_deleted);
-      return `<article class="release-review" data-review-id="${Number(item.id) || 0}" data-vote-count="${likes}" data-current-vote="${vote}"><header class="release-review-author">${avatar}<span><strong>${escapeHtml(profile.login || "Пользователь")}</strong><small>${date}${item.is_edited ? " · изменён" : ""}</small></span></header><p class="release-review-message">${deleted ? "Отзыв удалён" : escapeHtml(item.message || "")}</p>${item.is_spoiler ? '<span class="review-spoiler">Спойлер</span>' : ""}<footer class="release-review-actions"><span class="review-reply-count">↩ ${Number(item.reply_count) || 0}</span><span class="review-votes"><button type="button" data-vote="2" aria-label="Не нравится" class="${vote === 2 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>−</button><strong>${likes}</strong><button type="button" data-vote="1" aria-label="Нравится" class="${vote === 1 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>＋</button></span><span class="review-vote-error" role="status" aria-live="polite"></span></footer></article>`;
+      return `<article class="release-review" data-review-id="${Number(item.id) || 0}" data-vote-count="${likes}" data-current-vote="${vote}"><header class="release-review-author">${avatar}<span><strong>${escapeHtml(profile.login || "Пользователь")}</strong><small>${date}${item.is_edited ? " · изменён" : ""}</small></span></header><p class="release-review-message">${deleted ? "Отзыв удалён" : escapeHtml(item.message || "")}</p>${item.is_spoiler ? '<span class="review-spoiler">Спойлер</span>' : ""}<footer class="release-review-actions"><span class="review-reply-count">↩ ${Number(item.reply_count) || 0}</span><span class="review-votes"><button type="button" data-vote="2" aria-label="Не нравится" class="${vote === 2 ? "is-voted" : ""}">−</button><strong>${likes}</strong><button type="button" data-vote="1" aria-label="Нравится" class="${vote === 1 ? "is-voted" : ""}">＋</button></span><span class="review-vote-error" role="status" aria-live="polite"></span></footer></article>`;
     }).join("");
     const hasPrevious = reviewPage > 1;
     const hasNext = totalPages > reviewPage;
@@ -449,7 +449,6 @@
     const card = button.closest("[data-review-id]");
     const error = card?.querySelector(".review-vote-error");
     if (card) {
-      card.querySelectorAll("[data-vote]").forEach(voteButton => { voteButton.disabled = false; });
       if (success) {
         const oldVote = Number(button.dataset.previousVote) || 0;
         const requestedVote = Number(button.dataset.requestedVote) || 0;
@@ -459,11 +458,15 @@
         const nextCount = oldCount + voteDelta(newVote) - voteDelta(oldVote);
         card.dataset.voteCount = String(nextCount);
         card.dataset.currentVote = String(newVote);
+        card.querySelectorAll("[data-vote]").forEach(voteButton => { voteButton.disabled = false; });
         const count = card.querySelector(".review-votes strong");
         if (count) count.textContent = String(nextCount);
         card.querySelectorAll("[data-vote]").forEach(voteButton => voteButton.classList.toggle("is-voted", Number(voteButton.dataset.vote) === newVote));
         if (error) error.textContent = "";
-      } else if (error) error.textContent = message || "Не удалось отправить оценку.";
+      } else {
+        card.querySelectorAll("[data-vote]").forEach(voteButton => { voteButton.disabled = false; });
+        if (error) error.textContent = message || "Не удалось отправить оценку.";
+      }
     }
     pendingReviewVote = null;
   }
