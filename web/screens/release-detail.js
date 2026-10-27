@@ -131,7 +131,6 @@
       refreshReleaseFromApi();
     }
     pendingListType = null;
-    window.app.setStatus("Список", "Список релиза обновлён.");
   }
   function listError(message) {
     const button = document.querySelector(`.list-picker [data-list="${pendingListType}"]`);
