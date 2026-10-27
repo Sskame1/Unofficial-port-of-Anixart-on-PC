@@ -103,6 +103,19 @@ impl ApiClient {
         serde_json::from_slice(&bytes).map_err(ApiError::InvalidJson)
     }
 
+    pub fn get_json_with_header<T: DeserializeOwned>(
+        &self,
+        url: Url,
+        header: &str,
+        value: &str,
+    ) -> Result<T, ApiError> {
+        let response = self.send_with_fallback(url, |client, candidate| {
+            client.get(candidate).header(header, value).send()
+        })?;
+        let bytes = response.bytes().map_err(ApiError::Transport)?;
+        serde_json::from_slice(&bytes).map_err(ApiError::InvalidJson)
+    }
+
     pub fn post_empty_json<T: DeserializeOwned>(&self, url: Url) -> Result<T, ApiError> {
         let response =
             self.send_with_fallback(url, |client, candidate| client.post(candidate).send())?;

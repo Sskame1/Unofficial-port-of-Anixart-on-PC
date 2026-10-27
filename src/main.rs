@@ -152,6 +152,14 @@ fn start() -> Result<()> {
                 let token = state.session.as_ref().map(|session| session.token.clone());
                 std::thread::spawn(move || {
                     let result = features::discover::api::release_with_token(&api, release_id, token.as_deref())
+                        .and_then(|mut release| {
+                            if let Some(related) = release.related.as_ref() {
+                                if let Ok(releases) = features::discover::api::related_with_token(&api, related.id, token.as_deref()) {
+                                    release.related_releases = releases;
+                                }
+                            }
+                            Ok(release)
+                        })
                         .map_err(|error| error.to_string());
                     let _ = proxy.send_event(AppEvent::ReleaseResolved(result));
                 });

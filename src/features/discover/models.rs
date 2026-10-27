@@ -14,6 +14,12 @@ pub struct ReleaseCard {
     #[serde(default)]
     pub year: Option<String>,
     #[serde(default)]
+    pub release_date: Option<String>,
+    #[serde(default)]
+    pub creation_date: Option<i64>,
+    #[serde(default)]
+    pub aired_on_date: Option<i64>,
+    #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
     pub grade: Option<f64>,
@@ -73,6 +79,17 @@ pub struct ReleaseCard {
     pub related_releases: Vec<ReleaseCard>,
     #[serde(default)]
     pub recommended_releases: Vec<ReleaseCard>,
+    #[serde(default)]
+    pub related: Option<RelatedReleaseGroup>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RelatedReleaseGroup {
+    pub id: u64,
+    #[serde(default)]
+    pub name_ru: Option<String>,
+    #[serde(default)]
+    pub release_count: Option<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

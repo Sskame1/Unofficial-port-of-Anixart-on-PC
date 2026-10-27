@@ -384,6 +384,82 @@ body {
   font-size: 11px;
 }
 
+.related-releases-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(8 10 18 / 72%);
+}
+
+.related-releases-dialog {
+  width: min(760px, 100%);
+  max-height: min(760px, 88vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg-primary);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 35%);
+}
+
+.related-releases-dialog > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.related-releases-dialog h2 { margin: 0; }
+.related-releases-dialog header p { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; }
+.related-releases-dialog header button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.related-releases-dialog header button:hover { background: var(--accent-soft); color: var(--accent); }
+
+.related-releases-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+  padding: 18px 22px 22px;
+}
+
+.related-releases-list .related-release-list-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  column-gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+}
+.related-releases-list .related-release-list-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.related-releases-list .related-release-list-card .release-poster { grid-row: 1 / span 2; width: 76px; margin: 0; }
+.related-releases-list .related-release-list-card .release-title { align-self: end; font-size: 14px; }
+.related-releases-list .related-release-list-card .release-meta { align-self: start; margin-top: 5px; font-size: 12px; }
+
+@media (max-width: 680px) {
+  .related-releases-overlay { padding: 12px; }
+  .related-releases-list { padding: 14px; }
+  .related-releases-dialog > header { padding: 16px; }
+}
+
 .detail-screenshot-row {
   display: flex;
   gap: 12px;
@@ -440,6 +516,7 @@ body {
 .release-review-actions { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; }
 .review-votes { display: inline-flex; align-items: center; gap: 8px; }
 .review-votes button { min-width: 30px; height: 28px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-primary); color: var(--text-secondary); cursor: pointer; }
+.review-vote-error { display: block; max-width: 260px; color: var(--danger, #d45b72); font-size: 12px; }
 .review-votes button:hover, .review-votes button.is-voted { border-color: var(--accent); color: var(--accent); }
 .review-votes button:disabled { cursor: default; opacity: .55; }
 .reviews-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px; color: var(--text-secondary); }
@@ -939,6 +1016,8 @@ body {
 #release-description { white-space: pre-line; max-height: 150px; overflow: hidden; }
 #release-description.is-expanded { max-height: none; }
 .release-description-block button, .release-section-heading button { margin-top: 12px; color: var(--accent); background: none; border: 0; }
+#related-releases-more { display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 9px; color: var(--accent); font-weight: 650; white-space: nowrap; }
+#related-releases-more:hover { border-color: var(--accent); background: var(--accent-soft); }
 .field-label { display: grid; gap: 8px; margin: 16px 0; }
 .field-label select { padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); }
 .episode-list { display: flex; gap: 10px; flex-wrap: wrap; }

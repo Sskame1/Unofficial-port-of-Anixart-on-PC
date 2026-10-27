@@ -11,6 +11,7 @@
   let reviewPage = 1;
   let pendingFavorite = null;
   let pendingReleaseVote = null;
+  let relatedReleases = [];
 
   function renderReleaseDetail(release) {
     selectedRelease = release;
@@ -40,7 +41,7 @@
           <div class="release-description-block"><p id="release-description"></p><button id="release-expand" type="button">Показать ещё</button></div>
         </section>
         <section class="release-rating-block"><div class="release-section-heading"><h2>Рейтинг</h2><span id="release-rating"></span></div><div class="rating-breakdown" id="release-rating-breakdown"></div><p id="release-votes"></p><div class="release-vote-actions"><button data-vote="1" aria-label="Поставить 1 звезду">★</button><button data-vote="2" aria-label="Поставить 2 звезды">★</button><button data-vote="3" aria-label="Поставить 3 звезды">★</button><button data-vote="4" aria-label="Поставить 4 звезды">★</button><button data-vote="5" aria-label="Поставить 5 звёзд">★</button></div></section>
-        <section class="release-subsection"><div class="release-section-heading"><h2>Похожие релизы</h2><button type="button">Все ›</button></div><div class="detail-poster-row" id="related-releases"></div></section>
+        <section class="release-subsection"><div class="release-section-heading"><h2>Похожие релизы</h2><button type="button" id="related-releases-more">Все ›</button></div><div class="detail-poster-row" id="related-releases"></div></section>
         <section class="release-subsection"><div class="release-section-heading"><h2>Скриншоты</h2></div><div class="detail-screenshot-row" id="release-screenshots"></div></section>
         <section class="release-subsection release-comments" id="release-popular-comments"><div class="release-section-heading"><div><h2>Отзывы</h2><p class="release-comments-hint">Комментарии с наибольшим числом лайков</p></div><button class="btn btn-secondary" type="button" id="release-popular-comments-more">Все отзывы</button></div><div id="release-popular-comments-list" class="release-reviews-list"></div></section>
       </article>`;
@@ -72,6 +73,7 @@
     }));
     document.getElementById("release-back").addEventListener("click", () => window.app.backFromRelease());
     renderRelated(release.related_releases || release.recommended_releases || []);
+    document.getElementById("related-releases-more").addEventListener("click", openRelatedReleases);
     renderScreenshots(release.screenshot_images || []);
     document.getElementById("release-popular-comments-list").innerHTML = '<p class="placeholder">Загружаем популярные отзывы…</p>';
     window.appIpc.send({ action: "load_release_comments", release_id: release.id, page: 1, sort: 3 });
@@ -204,10 +206,70 @@
   }
   function voteError(message) { pendingReleaseVote = null; window.app.setStatus("Рейтинг", message); }
   function renderRelated(items) {
+    relatedReleases = Array.isArray(items) ? items.slice() : [];
     const row = document.getElementById("related-releases");
     if (!row) return;
-    if (!items.length) { row.innerHTML = '<p class="placeholder">Похожие релизы не указаны.</p>'; return; }
-    row.replaceChildren(...items.map(item => { const card = window.releaseCard.render(item); card.classList.add("related-release-card"); return card; }));
+    if (!relatedReleases.length) { row.innerHTML = '<p class="placeholder">Похожие релизы не указаны.</p>'; return; }
+    row.replaceChildren(...relatedReleases.slice(0, 8).map(item => { const card = window.releaseCard.render({ ...item, action: null }); card.classList.add("related-release-card"); return card; }));
+    const more = document.getElementById("related-releases-more");
+    if (more) more.hidden = false;
+  }
+  function relatedDate(item) {
+    const value = item.release_date ?? item.premiere_date ?? item.date ?? item.aired_on_date ?? item.timestamp ?? item.year;
+    if (value == null || value === "") return null;
+    if (typeof value === "number" || /^\d{10,13}$/.test(String(value))) {
+      const number = Number(value);
+      const date = new Date(number < 100000000000 ? number * 1000 : number);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  function relatedDateLabel(item, date) {
+    if (!date) return "Дата неизвестна";
+    const hasFullDate = item.release_date ?? item.premiere_date ?? item.date ?? item.aired_on_date ?? item.timestamp;
+    return hasFullDate
+      ? date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+      : String(item.year || date.getFullYear());
+  }
+  function openRelatedReleases() {
+    if (!relatedReleases.length) return;
+    const sorted = relatedReleases.slice().sort((a, b) => {
+      const aDate = relatedDate(a)?.getTime() ?? Number.NEGATIVE_INFINITY;
+      const bDate = relatedDate(b)?.getTime() ?? Number.NEGATIVE_INFINITY;
+      return bDate - aDate;
+    });
+    const overlay = document.createElement("div");
+    overlay.className = "related-releases-overlay";
+    overlay.setAttribute("role", "presentation");
+    overlay.innerHTML = `<section class="related-releases-dialog" role="dialog" aria-modal="true" aria-labelledby="related-releases-title"><header><div><h2 id="related-releases-title">Похожие релизы</h2><p>Сначала самые новые</p></div><button type="button" aria-label="Закрыть">×</button></header><div class="related-releases-list"></div></section>`;
+    const list = overlay.querySelector(".related-releases-list");
+    for (const item of sorted) {
+      const card = window.releaseCard.render(item, () => {
+        close();
+        window.appIpc.send({ action: "open_release", release_id: Number(item.id) });
+      });
+      card.classList.add("related-release-list-card");
+      const date = relatedDate(item);
+      const dateLabel = relatedDateLabel(item, date);
+      const meta = card.querySelector(".release-meta");
+      if (meta) meta.textContent = dateLabel;
+      else {
+        const dateNode = document.createElement("div");
+        dateNode.className = "release-meta";
+        dateNode.textContent = dateLabel;
+        card.append(dateNode);
+      }
+      list.append(card);
+    }
+    const closeButton = overlay.querySelector("header button");
+    const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey); };
+    const onKey = event => { if (event.key === "Escape") close(); };
+    closeButton.addEventListener("click", close);
+    overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+    document.addEventListener("keydown", onKey);
+    document.body.append(overlay);
+    closeButton.focus();
   }
   function renderScreenshots(images) {
     const row = document.getElementById("release-screenshots");
@@ -355,7 +417,7 @@
       const likes = Number(item.likes_count ?? item.vote_count) || 0;
       const vote = Number(item.vote) || 0;
       const deleted = Boolean(item.is_deleted);
-      return `<article class="release-review" data-review-id="${Number(item.id) || 0}"><header class="release-review-author">${avatar}<span><strong>${escapeHtml(profile.login || "Пользователь")}</strong><small>${date}${item.is_edited ? " · изменён" : ""}</small></span></header><p class="release-review-message">${deleted ? "Отзыв удалён" : escapeHtml(item.message || "")}</p>${item.is_spoiler ? '<span class="review-spoiler">Спойлер</span>' : ""}<footer class="release-review-actions"><span class="review-reply-count">↩ ${Number(item.reply_count) || 0}</span><span class="review-votes"><button type="button" data-vote="-1" aria-label="Не нравится" class="${vote < 0 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>−</button><strong>${likes}</strong><button type="button" data-vote="1" aria-label="Нравится" class="${vote > 0 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>＋</button></span></footer></article>`;
+      return `<article class="release-review" data-review-id="${Number(item.id) || 0}" data-vote-count="${likes}" data-current-vote="${vote}"><header class="release-review-author">${avatar}<span><strong>${escapeHtml(profile.login || "Пользователь")}</strong><small>${date}${item.is_edited ? " · изменён" : ""}</small></span></header><p class="release-review-message">${deleted ? "Отзыв удалён" : escapeHtml(item.message || "")}</p>${item.is_spoiler ? '<span class="review-spoiler">Спойлер</span>' : ""}<footer class="release-review-actions"><span class="review-reply-count">↩ ${Number(item.reply_count) || 0}</span><span class="review-votes"><button type="button" data-vote="1" aria-label="Не нравится" class="${vote === 1 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>−</button><strong>${likes}</strong><button type="button" data-vote="2" aria-label="Нравится" class="${vote === 2 ? "is-voted" : ""}" ${item.can_like === false ? "disabled" : ""}>＋</button></span><span class="review-vote-error" role="status" aria-live="polite"></span></footer></article>`;
     }).join("");
     const hasPrevious = reviewPage > 1;
     const hasNext = totalPages > reviewPage;
@@ -366,8 +428,11 @@
       if (!commentId) return;
       if (!window.appStorage?.get("anixart_token")) return window.app.auth("signin");
       pendingReviewVote = button;
-      button.disabled = true;
-      window.appIpc.send({ action: "vote_release_comment", comment_id: commentId, vote: Number(button.dataset.vote) });
+      button.dataset.previousVote = card.dataset.currentVote || "0";
+      button.dataset.requestedVote = button.dataset.vote;
+      card.querySelectorAll("[data-vote]").forEach(voteButton => { voteButton.disabled = true; });
+      const requestedVote = Number(button.dataset.vote) === Number(card.dataset.currentVote) ? 0 : Number(button.dataset.vote);
+      window.appIpc.send({ action: "vote_release_comment", comment_id: commentId, vote: requestedVote });
     }));
     root.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => loadReviews(Number(button.dataset.page))));
   }
@@ -376,10 +441,27 @@
     if (root) root.innerHTML = `<p class="placeholder">Не удалось загрузить отзывы: ${escapeHtml(message)}</p>`;
   }
   function finishReviewVote(success, message) {
-    if (pendingReviewVote) pendingReviewVote.disabled = false;
+    if (!pendingReviewVote) return;
+    const button = pendingReviewVote;
+    const card = button.closest("[data-review-id]");
+    const error = card?.querySelector(".review-vote-error");
+    if (card) {
+      card.querySelectorAll("[data-vote]").forEach(voteButton => { voteButton.disabled = false; });
+      if (success) {
+        const oldVote = Number(button.dataset.previousVote) || 0;
+        const requestedVote = Number(button.dataset.requestedVote) || 0;
+        const newVote = requestedVote === oldVote ? 0 : requestedVote;
+        const oldCount = Number(card.dataset.voteCount) || 0;
+        const nextCount = oldCount - (oldVote === 2 ? 1 : oldVote === 1 ? -1 : 0) + (newVote === 2 ? 1 : newVote === 1 ? -1 : 0);
+        card.dataset.voteCount = String(nextCount);
+        card.dataset.currentVote = String(newVote);
+        const count = card.querySelector(".review-votes strong");
+        if (count) count.textContent = String(nextCount);
+        card.querySelectorAll("[data-vote]").forEach(voteButton => voteButton.classList.toggle("is-voted", Number(voteButton.dataset.vote) === newVote));
+        if (error) error.textContent = "";
+      } else if (error) error.textContent = message || "Не удалось отправить оценку.";
+    }
     pendingReviewVote = null;
-    if (success) loadReviews(reviewPage);
-    else window.app.setStatus("Оценка отзыва", message || "Не удалось отправить оценку");
   }
   window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, renderReviews, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showReviews, showReviewsError, finishReviewVote, listDone, listError, favoriteDone, favoriteError, voteDone, voteError };
 })();

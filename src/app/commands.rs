@@ -417,7 +417,7 @@ impl AppCommand {
                 Err("ID релиза или страница отзывов указаны неверно.".to_owned())
             }
             Self::VoteReleaseComment { comment_id, vote }
-                if comment_id > 0 && (-1..=1).contains(&vote) =>
+                if comment_id > 0 && (0..=2).contains(&vote) =>
             {
                 Ok(AppEvent::VoteReleaseComment { comment_id, vote })
             }

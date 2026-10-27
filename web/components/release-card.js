@@ -1,5 +1,5 @@
 (() => {
-  function render(release) {
+  function render(release, onSelect) {
     const card = document.createElement("div");
     card.className = "release-card";
     card.dataset.releaseId = release.id;
@@ -19,6 +19,10 @@
     `;
 
     card.addEventListener("click", () => {
+      if (typeof onSelect === "function") {
+        onSelect(release);
+        return;
+      }
       const targetId = Number(release.action || release.id);
       if (targetId > 0) window.appIpc.send({ action: "open_release", release_id: targetId });
     });

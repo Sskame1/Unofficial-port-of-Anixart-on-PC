@@ -46,6 +46,9 @@ pub fn page(
                     title_original: None,
                     image: Some(item.image),
                     year: None,
+                    release_date: None,
+                    creation_date: None,
+                    aired_on_date: None,
                     description: Some(item.description),
                     grade: None,
                     genres: None,
@@ -76,6 +79,7 @@ pub fn page(
                     screenshot_images: Vec::new(),
                     related_releases: Vec::new(),
                     recommended_releases: Vec::new(),
+                    related: None,
                 })
                 .collect(),
             current_page: response.current_page,
@@ -165,4 +169,36 @@ pub fn release_with_token(
     response
         .release
         .ok_or_else(|| ApiError::InvalidResponse("Anixart returned no release.".to_owned()))
+}
+
+pub fn related_with_token(
+    client: &ApiClient,
+    related_id: u64,
+    token: Option<&str>,
+) -> Result<Vec<ReleaseCard>, ApiError> {
+    if related_id == 0 {
+        return Ok(Vec::new());
+    }
+    let mut releases = Vec::new();
+    let mut page = 0_u32;
+    loop {
+        let mut url = client.url(&format!("related/{related_id}/{page}"))?;
+        url.query_pairs_mut().append_pair("token", token.unwrap_or(""));
+        let response: PageableResponse<ReleaseCard> = client.get_json_with_header(url, "API-Version", "v2")?;
+        if response.code != 0 {
+            return Err(ApiError::InvalidResponse(format!(
+                "Anixart rejected related releases request (code {}).",
+                response.code
+            )));
+        }
+        let received = response.content.len();
+        let reached_last_page = response.total_page_count > 0
+            && page + 1 >= response.total_page_count;
+        releases.extend(response.content);
+        if received == 0 || reached_last_page || page >= 99 {
+            break;
+        }
+        page += 1;
+    };
+    Ok(releases)
 }
