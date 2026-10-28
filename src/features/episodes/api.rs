@@ -50,14 +50,33 @@ pub fn episodes(
     release_id: u64,
     type_id: u64,
     source_id: u64,
+    token: &str,
 ) -> Result<Vec<EpisodeItem>, ApiError> {
     let mut url = client.url(&format!("episode/{release_id}/{type_id}/{source_id}"))?;
     url.query_pairs_mut()
         .append_pair("sort", "0")
-        .append_pair("token", "");
+        .append_pair("token", token);
     let response: EpisodesResponse = client.get_json(url)?;
     ensure_success(response.code, "episodes")?;
     Ok(response.episodes)
+}
+
+/// Mirrors the Android client's `EpisodeApi.watch` call. The server keeps the
+/// watched dot in the account history; guests still get the local client mark.
+pub fn watch(
+    client: &ApiClient,
+    release_id: u64,
+    source_id: u64,
+    position: u32,
+    token: &str,
+) -> Result<(), ApiError> {
+    let mut url = client.url(&format!("episode/watch/{release_id}/{source_id}/{position}"))?;
+    url.query_pairs_mut().append_pair("token", token);
+    let response: serde_json::Value = client.post_empty_json(url)?;
+    ensure_success(
+        response.get("code").and_then(serde_json::Value::as_i64).unwrap_or(-1) as i32,
+        "watch",
+    )
 }
 
 fn ensure_success(code: i32, operation: &str) -> Result<(), ApiError> {

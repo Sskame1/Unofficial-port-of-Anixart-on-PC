@@ -12,6 +12,21 @@ pub enum AppCommand {
         source_id: u64,
         position: u32,
     },
+    WatchEpisode {
+        release_id: u64,
+        source_id: u64,
+        position: u32,
+    },
+    SaveEpisodeProgress {
+        release_id: u64,
+        type_id: u64,
+        source_id: u64,
+        position: u32,
+        playback_position: u64,
+        watched: bool,
+    },
+    SetImageCacheEnabled { enabled: bool },
+    CacheImage { request_id: u64, url: String, category: String },
     DiscoverRandomRelease,
     OpenRelease {
         release_id: u64,
@@ -113,6 +128,23 @@ pub enum AppEvent {
         source_id: u64,
         position: u32,
     },
+    WatchEpisode {
+        release_id: u64,
+        source_id: u64,
+        position: u32,
+    },
+    SaveEpisodeProgress {
+        release_id: u64,
+        type_id: u64,
+        source_id: u64,
+        position: u32,
+        playback_position: u64,
+        watched: bool,
+    },
+    EpisodeWatchResolved(Result<(), String>),
+    SetImageCacheEnabled(bool),
+    CacheImage { request_id: u64, url: String, category: String },
+    CachedImageResolved { request_id: u64, result: Result<String, String> },
     DiscoverRandomRelease,
     OpenRelease(u64),
     RandomReleaseResolved(Result<crate::features::discover::models::ReleaseCard, String>),
@@ -218,14 +250,15 @@ pub enum AppEvent {
         kind: String,
         page: u32,
     },
-    DiscoverPageResolved(
-        Result<
+    DiscoverPageResolved {
+        kind: String,
+        result: Result<
             crate::features::discover::api::PageableResponse<
                 crate::features::discover::models::ReleaseCard,
             >,
             String,
         >,
-    ),
+    },
     LoadSchedule,
     ScheduleResolved(Result<crate::features::schedule::api::ScheduleResponse, String>),
     LoadTypes,
@@ -267,6 +300,43 @@ impl AppCommand {
                 source_id,
                 position,
             }),
+            Self::WatchEpisode {
+                release_id,
+                source_id,
+                position,
+            } if release_id > 0 && source_id > 0 && position > 0 => Ok(AppEvent::WatchEpisode {
+                release_id,
+                source_id,
+                position,
+            }),
+            Self::WatchEpisode { .. } => {
+                Err("ID релиза, источника и серии должны быть больше нуля.".to_owned())
+            }
+            Self::SaveEpisodeProgress {
+                release_id,
+                type_id,
+                source_id,
+                position,
+                playback_position,
+                watched,
+            } if release_id > 0 && type_id > 0 && source_id > 0 && position > 0 => Ok(AppEvent::SaveEpisodeProgress {
+                release_id,
+                type_id,
+                source_id,
+                position,
+                playback_position,
+                watched,
+            }),
+            Self::SaveEpisodeProgress { .. } => {
+                Err("Параметры прогресса серии указаны неверно.".to_owned())
+            }
+            Self::SetImageCacheEnabled { enabled } => Ok(AppEvent::SetImageCacheEnabled(enabled)),
+            Self::CacheImage { request_id, url, category }
+                if request_id > 0 && url.len() <= 4096 && url.starts_with("https://") =>
+            {
+                Ok(AppEvent::CacheImage { request_id, url, category })
+            }
+            Self::CacheImage { .. } => Err("Некорректный запрос изображения в кеш.".to_owned()),
             Self::DiscoverRandomRelease => Ok(AppEvent::DiscoverRandomRelease),
             Self::OpenRelease { release_id } if release_id > 0 => {
                 Ok(AppEvent::OpenRelease(release_id))

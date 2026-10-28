@@ -12,6 +12,8 @@ cargo run --release
 
 Чтобы выбрать другой API endpoint Anixart, перед запуском задайте `ANIXART_API_URL`: `https://api-s.anixsekai.com/`, `https://api.anixart.app/` или `https://api.anixart.tv/`.
 
+Текущая версия — **0.3.0**. Кеш изображений включён по умолчанию и хранит постеры, аватары, скриншоты, изображения Ленты и баннеры в `%LOCALAPPDATA%\AnixartWindowsClient\Memory`. Его можно отключить в настройках.
+
 ## ToDo
 
 - Проверить полный просмотр эпизода от открытия до конца.

@@ -1,10 +1,13 @@
 use crate::api::ApiClient;
 use crate::features::auth::session::AuthSession;
+use crate::features::player::progress::PlaybackProgress;
+use std::collections::HashMap;
 
 pub struct AppState {
     pub api: ApiClient,
     current_route: String,
     pub session: Option<AuthSession>,
+    pub playback: HashMap<String, PlaybackProgress>,
 }
 
 impl AppState {
@@ -13,6 +16,7 @@ impl AppState {
             api,
             current_route: "home".to_owned(),
             session: None,
+            playback: HashMap::new(),
         }
     }
 

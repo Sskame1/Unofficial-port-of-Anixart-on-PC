@@ -27,6 +27,8 @@ fn start() -> Result<()> {
     let api = api::ApiClient::new().context("could not initialize Anixart API client")?;
     let mut state = AppState::new(api);
     state.session = features::auth::session::load().ok().flatten();
+    state.playback = features::player::progress::load();
+    let image_cache = features::image_cache::ImageCache::new().map_err(|error| anyhow::anyhow!(error))?;
     let event_loop = EventLoopBuilder::<AppEvent>::with_user_event().build();
     let proxy: EventLoopProxy<AppEvent> = event_loop.create_proxy();
     let window_icon = load_window_icon()?;
@@ -58,8 +60,13 @@ fn start() -> Result<()> {
         fallback
     };
     let mut web_context = WebContext::new(Some(webview_data));
+    let cache_for_protocol = image_cache.clone();
     let webview = WebViewBuilder::new(&window)
         .with_web_context(&mut web_context)
+        .with_asynchronous_custom_protocol("anixart-cache".into(), move |request, responder| {
+            let cache = cache_for_protocol.clone();
+            std::thread::spawn(move || responder.respond(cache.respond(request)));
+        })
         .with_html(include_str!(concat!(env!("OUT_DIR"), "/index.html")))
         .with_ipc_handler(move |request: Request<String>| {
             let result = serde_json::from_str::<AppCommand>(request.body())
@@ -87,6 +94,8 @@ fn start() -> Result<()> {
                     serde_json::json!({
                         "route": state.route(),
                         "session": state.session,
+                        "playback": state.playback,
+                        "image_cache_enabled": image_cache.enabled(),
                     }),
                 );
                 if let Some(session) = state.session.clone() {
@@ -127,6 +136,64 @@ fn start() -> Result<()> {
                     )
                     .map_err(|error| error.to_string());
                     let _ = proxy.send_event(AppEvent::EpisodeResolved(result));
+                });
+            }
+            Event::UserEvent(AppEvent::WatchEpisode {
+                release_id,
+                source_id,
+                position,
+            }) => {
+                if let Some(session) = state.session.clone() {
+                    let api = state.api.clone();
+                    let proxy = proxy.clone();
+                    std::thread::spawn(move || {
+                        let result = features::episodes::api::watch(
+                            &api, release_id, source_id, position, &session.token,
+                        )
+                        .map_err(|error| error.to_string());
+                        let _ = proxy.send_event(AppEvent::EpisodeWatchResolved(result));
+                    });
+                } else {
+                    let _ = deliver(&webview, "episode_watch_done", serde_json::json!({"local_only": true}));
+                }
+            }
+            Event::UserEvent(AppEvent::SaveEpisodeProgress {
+                release_id,
+                type_id,
+                source_id,
+                position,
+                playback_position,
+                watched,
+            }) => {
+                let key = format!("{release_id}:{type_id}:{source_id}:{position}");
+                let progress = if watched {
+                    features::player::progress::PlaybackProgress { position: 0, watched: true }
+                } else {
+                    features::player::progress::PlaybackProgress { position: playback_position, watched }
+                };
+                state.playback.insert(key, progress.clone());
+                let _ = features::player::progress::save(&state.playback);
+                let _ = deliver(&webview, "episode_progress_saved", serde_json::json!({
+                    "release_id": release_id,
+                    "type_id": type_id,
+                    "source_id": source_id,
+                    "position": position,
+                    "progress": progress,
+                }));
+            }
+            Event::UserEvent(AppEvent::SetImageCacheEnabled(enabled)) => {
+                let result = image_cache.set_enabled(enabled);
+                let _ = deliver(&webview, "image_cache_changed", serde_json::json!({
+                    "enabled": enabled,
+                    "error": result.err(),
+                }));
+            }
+            Event::UserEvent(AppEvent::CacheImage { request_id, url, category }) => {
+                let cache = image_cache.clone();
+                let proxy = proxy.clone();
+                std::thread::spawn(move || {
+                    let result = cache.load_data_url(&url, &category);
+                    let _ = proxy.send_event(AppEvent::CachedImageResolved { request_id, result });
                 });
             }
             Event::UserEvent(AppEvent::DiscoverRandomRelease) => {
@@ -192,9 +259,14 @@ fn start() -> Result<()> {
             }) => {
                 let api = state.api.clone();
                 let proxy = proxy.clone();
+                let token = state
+                    .session
+                    .as_ref()
+                    .map(|session| session.token.clone())
+                    .unwrap_or_default();
                 std::thread::spawn(move || {
                     let result =
-                        features::episodes::api::episodes(&api, release_id, type_id, source_id)
+                        features::episodes::api::episodes(&api, release_id, type_id, source_id, &token)
                             .map_err(|error| error.to_string());
                     let _ = proxy.send_event(AppEvent::EpisodesResolved(result));
                 });
@@ -477,15 +549,15 @@ fn start() -> Result<()> {
                 let proxy = proxy.clone();
                 let token = state.session.as_ref().map(|session| session.token.clone());
                 std::thread::spawn(move || {
-                    let kind = match kind.as_str() {
+                    let discover_kind = match kind.as_str() {
                         "recommendations" => features::discover::api::DiscoverKind::Recommendations,
                         "watching" => features::discover::api::DiscoverKind::Watching,
                         "interesting" => features::discover::api::DiscoverKind::Interesting,
                         _ => features::discover::api::DiscoverKind::Discussing,
                     };
-                    let result = features::discover::api::page(&api, kind, page, token.as_deref())
+                    let result = features::discover::api::page(&api, discover_kind, page, token.as_deref())
                         .map_err(|error| error.to_string());
-                    let _ = proxy.send_event(AppEvent::DiscoverPageResolved(result));
+                    let _ = proxy.send_event(AppEvent::DiscoverPageResolved { kind, result });
                 });
             }
             Event::UserEvent(AppEvent::LoadSchedule) => {
@@ -697,11 +769,14 @@ fn start() -> Result<()> {
                     serde_json::json!({"message": error}),
                 );
             }
-            Event::UserEvent(AppEvent::DiscoverPageResolved(Ok(page))) => {
+            Event::UserEvent(AppEvent::DiscoverPageResolved { kind, result: Ok(page) }) => {
                 let _ = deliver(
                     &webview,
                     "discover_page",
-                    serde_json::to_value(page).unwrap_or_else(|_| serde_json::json!({})),
+                    serde_json::json!({
+                        "kind": kind,
+                        "data": serde_json::to_value(page).unwrap_or_else(|_| serde_json::json!({}))
+                    }),
                 );
             }
             Event::UserEvent(AppEvent::HistoryResolved(Ok(page))) => {
@@ -718,11 +793,11 @@ fn start() -> Result<()> {
                     serde_json::json!({ "message": error }),
                 );
             }
-            Event::UserEvent(AppEvent::DiscoverPageResolved(Err(error))) => {
+            Event::UserEvent(AppEvent::DiscoverPageResolved { kind, result: Err(error) }) => {
                 let _ = deliver(
                     &webview,
                     "discover_page_error",
-                    serde_json::json!({ "message": error }),
+                    serde_json::json!({ "kind": kind, "message": error }),
                 );
             }
             Event::UserEvent(AppEvent::ScheduleResolved(Ok(schedule))) => {
@@ -846,7 +921,9 @@ fn start() -> Result<()> {
                     "episode",
                     serde_json::json!({
                         "name": episode.name,
-                        "url": episode.url
+                        "url": episode.url,
+                        "playback_position": episode.playback_position,
+                        "is_watched": episode.is_watched
                     }),
                 );
             }
@@ -859,6 +936,18 @@ fn start() -> Result<()> {
                         "message": error
                     }),
                 );
+            }
+            Event::UserEvent(AppEvent::EpisodeWatchResolved(Ok(()))) => {
+                let _ = deliver(&webview, "episode_watch_done", serde_json::json!({"local_only": false}));
+            }
+            Event::UserEvent(AppEvent::EpisodeWatchResolved(Err(error))) => {
+                let _ = deliver(&webview, "episode_watch_error", serde_json::json!({"message": error}));
+            }
+            Event::UserEvent(AppEvent::CachedImageResolved { request_id, result: Ok(data_url) }) => {
+                let _ = deliver(&webview, "cached_image_data", serde_json::json!({"request_id": request_id, "data_url": data_url}));
+            }
+            Event::UserEvent(AppEvent::CachedImageResolved { request_id, result: Err(error) }) => {
+                let _ = deliver(&webview, "cached_image_error", serde_json::json!({"request_id": request_id, "message": error}));
             }
             Event::UserEvent(AppEvent::Alert(message)) => {
                 let _ = deliver(&webview, "alert", serde_json::json!({ "message": message }));

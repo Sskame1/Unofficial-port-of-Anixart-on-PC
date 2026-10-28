@@ -19,6 +19,7 @@
   }
 
   function navigate(route) {
+    if (currentRoute === "player" && route !== "player") window.releaseDetailScreen?.beforeNavigate?.();
     currentRoute = route;
     document.documentElement.dataset.route = route;
     if (window.appNavigation) {
@@ -95,6 +96,8 @@
         storageSet("anixart_session", JSON.stringify(message.payload.session));
         storageSet("anixart_token", message.payload.session.token);
       }
+      window.appPlayback?.load(message.payload?.playback || {});
+      window.appImageCache?.setEnabled(message.payload?.image_cache_enabled !== false);
       navigate(message.payload?.route || "home");
     } else if (message.event === "profile_data") {
       window.app.profileData = message.payload || null;
@@ -129,7 +132,7 @@
     } else if (message.event === "discover_page") {
       window.appScreens.showDiscoverPage?.(message.payload || {});
     } else if (message.event === "discover_page_error") {
-      window.appScreens.showDiscoverError?.(message.payload?.message || "Ошибка загрузки");
+      window.appScreens.showDiscoverError?.(message.payload || {});
     } else if (message.event === "search_results") {
       window.appScreens.showSearchResults?.(message.payload || []);
     } else if (message.event === "search_error") {
@@ -210,6 +213,12 @@
     else if (message.event === "collection_favorite_error") window.appScreens.collectionFavoriteError?.(message.payload?.message || "Не удалось изменить закладку");
     else if (message.event === "release_list_done") window.releaseDetailScreen?.listDone();
     else if (message.event === "release_list_error") window.releaseDetailScreen?.listError(message.payload?.message);
+    else if (message.event === "image_cache_changed") {
+      if (!message.payload?.error) window.appImageCache?.setEnabled(message.payload?.enabled);
+    }
+    else if (message.event === "cached_image_data" || message.event === "cached_image_error") {
+      window.appImageCache?.receive(message);
+    }
   }
 
   window.app = {
@@ -268,6 +277,7 @@
     }
 
     document.querySelector(".sidebar-footer [data-route=\"settings\"]")?.addEventListener("click", () => navigate("settings"));
+    document.querySelector(".sidebar-footer [data-route=\"notifications\"]")?.addEventListener("click", () => navigate("notifications"));
     updateThemeControls();
     document.getElementById("refresh-current")?.addEventListener("click", refreshCurrent);
     window.addEventListener("keydown", event => {

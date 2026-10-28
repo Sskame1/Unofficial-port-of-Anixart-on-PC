@@ -8,6 +8,8 @@ fn main() {
     let style_paths = ["web/styles/desktop.css"];
     let script_paths = [
         "web/services/ipc.js",
+        "web/services/playback.js",
+        "web/services/image-cache.js",
         "web/components/navigation.js",
         "web/components/release-card.js",
         "web/screens/home.js",
@@ -40,6 +42,11 @@ fn main() {
         &html,
         "<!-- FILTER_OPTIONS -->",
         &format!("<script>window.appFilterOptions={filter_options};</script>"),
+    );
+    html = replace_once(
+        &html,
+        "<!-- APP_VERSION -->",
+        &format!("<script>window.appVersion={:?};</script>", env!("CARGO_PKG_VERSION")),
     );
 
     let styles = style_paths

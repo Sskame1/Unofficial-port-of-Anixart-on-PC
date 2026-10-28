@@ -3,6 +3,7 @@ pub mod auth;
 pub mod discover;
 pub mod episodes;
 pub mod filter;
+pub mod image_cache;
 pub mod player;
 pub mod profile;
 pub mod reviews;

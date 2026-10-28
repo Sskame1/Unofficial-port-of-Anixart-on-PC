@@ -6,6 +6,8 @@ use serde::Deserialize;
 pub struct EpisodeLink {
     pub name: String,
     pub url: String,
+    pub playback_position: u64,
+    pub is_watched: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,6 +70,10 @@ struct EpisodeItem {
     url: String,
     #[serde(default)]
     iframe: bool,
+    #[serde(default, deserialize_with = "crate::features::episodes::u64_or_default")]
+    playback_position: u64,
+    #[serde(default, deserialize_with = "crate::features::episodes::bool_or_default")]
+    is_watched: bool,
 }
 
 fn config_api_urls(client: &ApiClient) -> Result<Vec<String>, ApiError> {
@@ -162,6 +168,8 @@ fn resolve_with_base(
             episode.name
         },
         url: episode.url,
+        playback_position: episode.playback_position,
+        is_watched: episode.is_watched,
     })
 }
 

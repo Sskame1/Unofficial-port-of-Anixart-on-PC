@@ -12,6 +12,8 @@ cargo run --release
 
 To select another Anixart API endpoint, set `ANIXART_API_URL` to one of `https://api-s.anixsekai.com/`, `https://api.anixart.app/`, or `https://api.anixart.tv/` before launching.
 
+The current version is **0.3.0**. Image caching is enabled by default and stores posters, avatars, screenshots, feed images, and banners under `%LOCALAPPDATA%\AnixartWindowsClient\Memory`. You can disable it in Settings.
+
 ## ToDo
 
 - Confirm playback of an episode from start to finish.

@@ -1,6 +1,6 @@
 [package]
 name = "anixart-windows-client"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "MIT"
 description = "A small Windows client for opening Anixart episodes"
@@ -11,6 +11,7 @@ base64 = "0.22"
 
 [dependencies]
 anyhow = "1"
+chrono = { version = "0.4", features = ["clock", "serde"] }
 png = "0.18"
 reqwest = { version = "0.12", default-features = true, features = ["blocking", "json", "native-tls"] }
 serde = { version = "1", features = ["derive"] }
@@ -18,5 +19,6 @@ serde_json = "1"
 keyring = { version = "3.6.3", default-features = false, features = ["windows-native"] }
 base64 = "0.22"
 sha2 = "0.10"
+url = "2"
 tao = "0.30"
 wry = "0.45"

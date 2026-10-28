@@ -8,6 +8,17 @@
       </div>
 
       <div class="profile-section">
+        <h2>Производительность</h2>
+        <div class="settings-row">
+          <div>
+            <strong>Кеш изображений</strong>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">Сохранять постеры, аватары, скриншоты и баннеры на диске для быстрой загрузки.</p>
+          </div>
+          <label class="settings-switch"><input type="checkbox" id="settings-image-cache" checked><span>Включено</span></label>
+        </div>
+      </div>
+
+      <div class="profile-section">
         <h2>Внешний вид</h2>
         <div class="settings-row">
           <div>
@@ -70,7 +81,7 @@
           <div>
             <strong>Версия</strong>
             <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
-              Anixart Desktop v0.1.0
+              Anixart Desktop v${window.appVersion || "0.3.0"}
             </p>
           </div>
         </div>
@@ -81,6 +92,13 @@
     if (themeToggle) {
       themeToggle.addEventListener("click", () => {
         window.app.toggleTheme();
+      });
+    }
+    const cacheToggle = root.querySelector("#settings-image-cache");
+    if (cacheToggle) {
+      cacheToggle.checked = window.appImageCache?.isEnabled?.() !== false;
+      cacheToggle.addEventListener("change", () => {
+        window.appIpc.send({ action: "set_image_cache_enabled", enabled: cacheToggle.checked });
       });
     }
     root.querySelector("#settings-signout")?.addEventListener("click", () => {

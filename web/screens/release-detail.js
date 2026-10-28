@@ -12,6 +12,21 @@
   let pendingFavorite = null;
   let pendingReleaseVote = null;
   let relatedReleases = [];
+  let playerState = null;
+
+  function savePlayerProgress(forceWatched = false) {
+    if (!playerState) return;
+    const current = Number(playerState.currentPosition) || Number(playerState.episode.playback_position) || 0;
+    const watched = Boolean(forceWatched || playerState.ended || playerState.episode.is_watched);
+    window.appPlayback?.save(playerState.releaseId, playerState.typeId, playerState.sourceId, playerState.position, watched ? 0 : current, watched);
+  }
+
+  function cleanupPlayer() {
+    if (!playerState) return;
+    savePlayerProgress();
+    if (playerState.timer) window.clearInterval(playerState.timer);
+    playerState = null;
+  }
 
   function renderReleaseDetail(release) {
     selectedRelease = release;
@@ -315,6 +330,7 @@
     window.appIpc.send({ action: "load_episode_types", release_id: release.id });
   }
   function renderPlayer(release, episode) {
+    cleanupPlayer();
     const main = document.getElementById("screen-content");
     if (!episode) {
       main.innerHTML = '<section class="screen player-page"><p class="placeholder">Серия не выбрана.</p><button class="watch-back-button" id="player-back" type="button">← К сериям</button></section>';
@@ -327,16 +343,23 @@
     if (!/^https:\/\//i.test(url)) {
       main.innerHTML = `<section class="screen player-page"><button class="watch-back-button" id="player-back" type="button">← <span>К сериям</span></button><p class="placeholder">Ссылка на видеоплеер имеет неподдерживаемый формат.</p></section>`;
     } else {
-      main.innerHTML = `<section class="screen player-page"><button class="watch-back-button" id="player-back" type="button">← <span>К сериям</span></button><header class="player-page-heading"><p>${releaseTitle}</p><h1>${title}</h1></header><section class="player-panel" aria-label="Плеер эпизода"><iframe title="${title}" src="${escapeHtml(url)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></section></section>`;
+      const initial = Number(episode.playback_position) || 0;
+      main.innerHTML = `<section class="screen player-page"><button class="watch-back-button" id="player-back" type="button">← <span>К сериям</span></button><header class="player-page-heading"><p>${releaseTitle}</p><h1>${title}</h1>${initial > 0 ? `<p class="player-resume-note">Продолжить с ${formatTime(initial)}</p>` : ""}</header><section class="player-panel" aria-label="Плеер эпизода"><iframe title="${title}" src="${escapeHtml(url)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></section></section>`;
+      playerState = { releaseId: Number(release?.id) || 0, typeId: Number(episode.type_id || selectedType) || 0, sourceId: Number(episode.source_id || selectedSource) || 0, position: Number(episode.position) || 0, episode, currentPosition: initial, ended: false, timer: null };
+      const frame = main.querySelector("iframe");
+      frame?.addEventListener("load", () => frame.contentWindow?.postMessage({ type: "anixart_request_position" }, "*"));
+      playerState.timer = window.setInterval(() => frame?.contentWindow?.postMessage({ type: "anixart_request_position" }, "*"), 5000);
     }
-    document.getElementById("player-back").addEventListener("click", () => window.app.navigate("watch"));
+    document.getElementById("player-back").addEventListener("click", () => { cleanupPlayer(); window.app.navigate("watch"); });
   }
   function showPlayerError(message) {
+    cleanupPlayer();
     const main = document.getElementById("screen-content");
     if (!main || !document.documentElement.dataset.route.includes("player")) return;
     main.innerHTML = `<section class="screen player-page"><button class="watch-back-button" id="player-back" type="button">← <span>К сериям</span></button><p class="placeholder">Не удалось открыть эпизод: ${escapeHtml(message)}</p></section>`;
     document.getElementById("player-back").addEventListener("click", () => window.app.navigate("watch"));
   }
+  function formatTime(seconds) { const total = Math.max(0, Math.floor(Number(seconds) || 0)); const minutes = Math.floor(total / 60); const secs = total % 60; return `${minutes}:${String(secs).padStart(2, "0")}`; }
   function setWatchSection(activeId) { ["episode-type-list", "episode-source-section", "episode-list-section"].forEach(id => { const node = document.getElementById(id); if (!node) return; node.classList.toggle("hidden", id !== activeId); }); }
   function formatCount(value) { const count = Number(value) || 0; return count >= 1_000_000 ? `${(count / 1_000_000).toFixed(1).replace(".0", "")} млн` : count >= 1_000 ? `${Math.round(count / 1_000)} тыс.` : String(count); }
   function renderChoiceIcon(icon, name, isSub) { const accessible = icon && /^https?:\/\//i.test(icon); return `<span class="episode-choice-icon">${accessible ? `<img src="${escapeHtml(icon)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : `<span aria-hidden="true">${isSub ? "文" : escapeHtml((name || "?").slice(0, 1).toUpperCase())}</span>`}</span>`; }
@@ -378,15 +401,22 @@
     episodeItems = items;
     const list = document.getElementById("episode-list"); if (!list) return;
     if (!items.length) return renderEpisodeState("Эпизоды не найдены.");
-    list.replaceChildren(...items.map(item => {
-      const button = document.createElement("button"); button.type = "button"; button.className = `episode-item${item.is_watched ? " is-watched" : ""}`; button.innerHTML = `<span class="episode-item-title">${escapeHtml(item.name || `${item.position} серия`)}</span>${item.is_filler ? '<span class="episode-filler-tag">Филлер</span>' : ""}<span class="episode-item-status" aria-label="${item.is_watched ? "Просмотрено" : "Не просмотрено"}">${item.is_watched ? "✓" : "›"}</span>`;
-      button.addEventListener("click", () => window.appIpc.send({ action: "play_episode", release_id: selectedRelease.id, type_id: selectedType, source_id: selectedSource, position: item.position })); return button;
+    list.replaceChildren(...items.map(rawItem => {
+      const item = window.appPlayback?.mergeEpisode(selectedRelease.id, selectedType, selectedSource, rawItem) || rawItem;
+      const progress = Number(item.playback_position) || 0;
+      const watched = Boolean(item.is_watched);
+      const button = document.createElement("button"); button.type = "button"; button.className = `episode-item${watched ? " is-watched" : ""}`; button.innerHTML = `<span class="episode-item-title">${escapeHtml(item.name || `${item.position} серия`)}${progress > 0 && !watched ? `<small class="episode-progress-label">с ${formatTime(progress)}</small>` : ""}</span>${item.is_filler ? '<span class="episode-filler-tag">Филлер</span>' : ""}<span class="episode-item-status" aria-label="${watched ? "Просмотрено" : "Не просмотрено"}">${watched ? '<i class="episode-watched-dot" aria-hidden="true"></i>' : "›"}</span>`;
+      button.addEventListener("click", () => {
+        const local = window.appPlayback?.markOpened(selectedRelease.id, selectedType, selectedSource, item.position);
+        window.app.currentEpisode = { ...item, type_id: selectedType, source_id: selectedSource, playback_position: Number(local?.position) || progress, is_watched: true };
+        window.appIpc.send({ action: "play_episode", release_id: selectedRelease.id, type_id: selectedType, source_id: selectedSource, position: item.position });
+      }); return button;
     }));
   }
   function showEpisode(episode) {
     const url = String(episode?.url || "");
     if (!/^https:\/\//i.test(url)) return showError("Ссылка на видеоплеер имеет неподдерживаемый формат.");
-    window.app.currentEpisode = episode;
+    window.app.currentEpisode = { ...(window.app.currentEpisode || {}), ...episode };
     window.app.navigate("player");
   }
   function showError(message) {
@@ -470,5 +500,18 @@
     }
     pendingReviewVote = null;
   }
-  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, renderReviews, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showReviews, showReviewsError, finishReviewVote, listDone, listError, favoriteDone, favoriteError, voteDone, voteError };
+  window.addEventListener("message", event => {
+    if (!playerState || !event.data) return;
+    const data = typeof event.data === "string" ? (() => { try { return JSON.parse(event.data); } catch (_) { return {}; } })() : event.data;
+    const position = Number(data.currentTime ?? data.position ?? data.playback_position ?? data.time);
+    if (Number.isFinite(position) && position >= 0) {
+      playerState.currentPosition = position;
+      window.appPlayback?.save(playerState.releaseId, playerState.typeId, playerState.sourceId, playerState.position, position, false);
+    }
+    if (data.ended === true || data.event === "ended" || data.type === "ended") {
+      playerState.ended = true;
+      savePlayerProgress(true);
+    }
+  });
+  window.releaseDetailScreen = { render: renderReleaseDetail, renderWatch, renderPlayer, beforeNavigate: cleanupPlayer, renderReviews, showTypes, showSources, showEpisodes, showEpisode, showError, showPlayerError, showReviews, showReviewsError, finishReviewVote, listDone, listError, favoriteDone, favoriteError, voteDone, voteError };
 })();
