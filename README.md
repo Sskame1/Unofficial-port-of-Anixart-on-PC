@@ -1,6 +1,12 @@
-# Anixart for Windows
+<p align="center">
+  <img src="web/assets/logo.png" alt="Anixart logo" width="96">
+</p>
 
-A Rust desktop client for browsing Anixart. The UI is built from local HTML, CSS, and JavaScript modules bundled into a Windows WebView.
+# Anixart For Windows
+
+## Description
+
+A Rust desktop client for browsing Anixart. The interface uses local HTML, CSS, and JavaScript bundled into a Windows WebView.
 
 ## Build
 
@@ -10,17 +16,8 @@ Requirements: Windows x64, Rust, and Microsoft Edge WebView2 Runtime.
 cargo run --release
 ```
 
-To select another Anixart API endpoint, set `ANIXART_API_URL` to one of `https://api-s.anixsekai.com/`, `https://api.anixart.app/`, or `https://api.anixart.tv/` before launching.
-
-The current version is **0.3.0**. Image caching is enabled by default and stores posters, avatars, screenshots, feed images, and banners under `%LOCALAPPDATA%\AnixartWindowsClient\Memory`. You can disable it in Settings.
-
-## ToDo
-
-- Confirm playback of an episode from start to finish.
-- Complete catalog, profile, collection, and social feature parity.
-- Verify API mirrors and account actions against live service responses.
-- Improve Windows packaging and release automation.
+The application uses the configured Anixart API endpoint and stores its local image cache under `%LOCALAPPDATA%\AnixartWindowsClient\Memory`.
 
 ## License
 
-Project code is MIT licensed. This does not grant rights to Anixart, the supplied APK, media, or third-party brand assets. See [LICENSE](LICENSE).
+Project code is available under the MIT License. This does not grant rights to Anixart, the supplied APK, media, or third-party brand assets. See [LICENSE](LICENSE).
